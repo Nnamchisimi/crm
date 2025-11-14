@@ -235,14 +235,34 @@ export const Admin = () => {
       }}
     >
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          console.log({ subject: formData.title, content: formData.description });
-          alert("Newsletter sent to subscribed users (simulated)!");
-          setFormData({ ...formData, title: "", description: "" });
-        }}
-        style={{ width: "100%" }}
-      >
+  onSubmit={async (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.description) {
+      alert("Please fill in both subject and content.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3007/api/newsletter/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: formData.title, content: formData.description }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Newsletter sent to ${data.count} subscribers!`);
+        setFormData({ ...formData, title: "", description: "" }); // clear form
+      } else {
+        alert("Error: " + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error, please try again.");
+    }
+  }}
+>
+
         <Grid container direction="column" spacing={3}>
           {/* Subject Field */}
           <Grid item>

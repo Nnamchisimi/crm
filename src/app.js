@@ -9,7 +9,9 @@ import { Admin } from "./admin";
 import Header from "./Header";
 import AddVehicle from "./addVehicle"
 import Newsletter from "./newsletter";
+import NotificationsPage from "./NotificationsPage";
 import ProtectedAdminRoute from "./protectedAdminRoute"; // import the protected rout
+import CampaignsPage from "./CampaignsPage";
 
 function AppWrapper() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,7 +38,7 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
   const location = useLocation();
 
   // pages where the Header SHOULD appear
-  const showHeaderPaths = ["/", "/newsletter", "/admin"];
+  const showHeaderPaths = ["/", "/admin"];
 
   const showHeader = showHeaderPaths.includes(location.pathname);
 
@@ -50,6 +52,8 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
         <Route path="/signup" element={<SignUp setIsLoggedIn={setIsLoggedIn} />} />
         <Route path="/addVehicle"element={<AddVehicle setIsLoggedIn={setIsLoggedIn}/>}/>
         <Route path ="/newsletter"element={<Newsletter setIsLoggedIn={setIsLoggedIn}/>}/>
+        <Route path="/notifications" element={<NotificationsPage />} />
+         <Route path="/campaigns" element={<CampaignsPage />} />
 
         {/* Protected admin-only routes */}
         <Route

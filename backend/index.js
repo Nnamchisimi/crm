@@ -82,16 +82,10 @@ app.post("/api/auth/google", async (req, res) => {
 
 // ✅ Add Vehicle
 app.post("/api/vehicles", async (req, res) => {
-  const { vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers } = req.body;
+  const { vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers, email } = req.body;
 
-  if (!vin || !licensePlate || !brand || !model || !vehicleType || !fuelType || !year || !kilometers) {
+  if (!vin || !licensePlate || !brand || !model || !vehicleType || !fuelType || !year || !kilometers || !email) {
     return res.status(400).json({ message: "All fields are required" });
-  }
-  if (year < 1900 || year > new Date().getFullYear()) {
-    return res.status(400).json({ message: "Invalid vehicle year" });
-  }
-  if (kilometers < 0) {
-    return res.status(400).json({ message: "Kilometers cannot be negative" });
   }
 
   try {
@@ -106,10 +100,10 @@ app.post("/api/vehicles", async (req, res) => {
 
     const sql = `
       INSERT INTO vehicles
-      (vin, license_plate, brand, model, vehicle_type, fuel_type, year, kilometers)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (vin, license_plate, brand, model, vehicle_type, fuel_type, year, kilometers, email)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await pool.execute(sql, [vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers]);
+    const [result] = await pool.execute(sql, [vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers, email]);
 
     res.status(201).json({
       message: "Vehicle registered successfully!",
@@ -122,6 +116,83 @@ app.post("/api/vehicles", async (req, res) => {
     });
   }
 });
+
+// POST /api/newsletter
+app.post("/api/newsletter", async (req, res) => {
+  try {
+    const { email, phone, notifications, preferences } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Insert into database
+    const sql = `
+      INSERT INTO newsletter_subscriptions 
+      (email, phone, notify_email, notify_sms, notify_phone, pref_weekly_digest, pref_monthly_offers, pref_service_reminders)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        phone = VALUES(phone),
+        notify_email = VALUES(notify_email),
+        notify_sms = VALUES(notify_sms),
+        notify_phone = VALUES(notify_phone),
+        pref_weekly_digest = VALUES(pref_weekly_digest),
+        pref_monthly_offers = VALUES(pref_monthly_offers),
+        pref_service_reminders = VALUES(pref_service_reminders),
+        updated_at = CURRENT_TIMESTAMP
+    `;
+
+    const [result] = await pool.execute(sql, [
+      email,
+      phone || null,
+      notifications.email ? 1 : 0,
+      notifications.sms ? 1 : 0,
+      notifications.phone ? 1 : 0,
+      preferences.weeklyDigest ? 1 : 0,
+      preferences.monthlyOffers ? 1 : 0,
+      preferences.reminders ? 1 : 0,
+    ]);
+
+    res.status(201).json({ success: true, message: "Subscribed successfully!" });
+  } catch (err) {
+    console.error("Newsletter subscription error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// server.js (or index.js)
+// POST /api/newsletter/send
+app.post("/api/newsletter/send", async (req, res) => {
+  const { subject, content } = req.body;
+
+  try {
+    // 1️⃣ Get all subscribed users
+    const [subscribers] = await pool.query("SELECT email FROM newsletter_subscriptions");
+
+    // 2️⃣ Send emails/SMS (simplified, just console for now)
+    subscribers.forEach(user => {
+      console.log(`Sending newsletter to ${user.email}`);
+      // sendEmail(user.email, subject, content) // implement actual email service
+    });
+
+    // 3️⃣ Insert notification for each user
+    for (const user of subscribers) {
+      await pool.query(
+        "INSERT INTO notifications (user_email, type, title, message) VALUES (?, 'Newsletter', ?, ?)",
+        [user.email, subject, content]
+      );
+    }
+
+    res.json({ success: true, count: subscribers.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to send newsletter" });
+  }
+});
+
+
+
+
 
 // ✅ Add Campaign (optional, if needed)
 app.post("/api/campaigns", async (req, res) => {

@@ -24,10 +24,15 @@ import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 
+
+
 const AddVehicle = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [formData, setFormData] = useState({
+    name: "",
+    surname: "",
+    phoneNumber: "",
     vin: "",
     licensePlate: "",
     brand: "",
@@ -62,15 +67,26 @@ const AddVehicle = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
+
+  // Get logged-in user's email
+  const userEmail = localStorage.getItem("userEmail");
+  if (!userEmail) {
+    alert("You must be logged in to register a vehicle.");
+    navigate("/signin");
+    return;
+  }
+
+  // Merge email into formData
+  const vehicleData = { ...formData, email: userEmail };
 
   try {
     const response = await fetch("http://localhost:3007/api/vehicles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(vehicleData), // ✅ include email
     });
 
     const data = await response.json();
@@ -79,7 +95,6 @@ const AddVehicle = () => {
       alert("Vehicle registered successfully!");
       navigate("/dashboard");
     } else {
-      // Fallback to data.error if data.message is undefined
       alert("Error: " + (data.message || data.error || "Unknown error"));
     }
   } catch (err) {
@@ -87,6 +102,7 @@ const AddVehicle = () => {
     alert("Server error, please try again.");
   }
 };
+
 
 
   const handleSignOut = () => {
@@ -204,125 +220,132 @@ const AddVehicle = () => {
           </Typography>
 
           <form onSubmit={handleSubmit}>
-            {[
-              { label: "VIN Number", name: "vin" },
-              { label: "License Plate", name: "licensePlate" },
-              { label: "Model", name: "model" },
-            ].map((field) => (
+              {[
+                // ✅ Added fields
+                { label: "Name", name: "name" },
+                { label: "Surname", name: "surname" },
+                { label: "Phone Number", name: "phoneNumber" },
+
+                // Your original fields
+                { label: "VIN Number", name: "vin" },
+                { label: "License Plate", name: "licensePlate" },
+                { label: "Model", name: "model" },
+              ].map((field) => (
+                <TextField
+                  key={field.name}
+                  label={field.label}
+                  name={field.name}
+                  value={formData[field.name]}
+                  onChange={handleChange}
+                  fullWidth
+                  required
+                  margin="normal"
+                  InputLabelProps={{ style: { color: "#ccc" } }}
+                  sx={{ input: { color: "white" } }}
+                />
+              ))}
+
               <TextField
-                key={field.name}
-                label={field.label}
-                name={field.name}
-                value={formData[field.name]}
+                select
+                label="Brand"
+                name="brand"
+                value={formData.brand}
                 onChange={handleChange}
                 fullWidth
                 required
                 margin="normal"
                 InputLabelProps={{ style: { color: "#ccc" } }}
                 sx={{ input: { color: "white" } }}
+              >
+                {brands.map((brand) => (
+                  <MenuItem key={brand} value={brand}>
+                    {brand}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Vehicle Type"
+                name="vehicleType"
+                value={formData.vehicleType}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                InputLabelProps={{ style: { color: "#ccc" } }}
+                sx={{ input: { color: "white" } }}
+              >
+                {vehicleTypes.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Fuel Type"
+                name="fuelType"
+                value={formData.fuelType}
+                onChange={handleChange}
+                fullWidth
+                required
+                margin="normal"
+                InputLabelProps={{ style: { color: "#ccc" } }}
+                sx={{ input: { color: "white" } }}
+              >
+                {fuelTypes.map((fuel) => (
+                  <MenuItem key={fuel} value={fuel}>
+                    {fuel}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                label="Year"
+                name="year"
+                type="number"
+                value={formData.year}
+                onChange={handleChange}
+                error={!!errors.year}
+                helperText={errors.year}
+                fullWidth
+                required
+                margin="normal"
+                InputLabelProps={{ style: { color: "#ccc" } }}
+                sx={{ input: { color: "white" } }}
               />
-            ))}
 
-            <TextField
-              select
-              label="Brand"
-              name="brand"
-              value={formData.brand}
-              onChange={handleChange}
-              fullWidth
-              required
-              margin="normal"
-              InputLabelProps={{ style: { color: "#ccc" } }}
-              sx={{ input: { color: "white" } }}
-            >
-              {brands.map((brand) => (
-                <MenuItem key={brand} value={brand}>
-                  {brand}
-                </MenuItem>
-              ))}
-            </TextField>
+              <TextField
+                label="Kilometers"
+                name="kilometers"
+                type="number"
+                value={formData.kilometers}
+                onChange={handleChange}
+                error={!!errors.kilometers}
+                helperText={errors.kilometers}
+                fullWidth
+                required
+                margin="normal"
+                InputLabelProps={{ style: { color: "#ccc" } }}
+                sx={{ input: { color: "white" } }}
+              />
 
-            <TextField
-              select
-              label="Vehicle Type"
-              name="vehicleType"
-              value={formData.vehicleType}
-              onChange={handleChange}
-              fullWidth
-              required
-              margin="normal"
-              InputLabelProps={{ style: { color: "#ccc" } }}
-              sx={{ input: { color: "white" } }}
-            >
-              {vehicleTypes.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </TextField>
+              <Button
+                variant="contained"
+                type="submit"
+                sx={{
+                  mt: 3,
+                  backgroundColor: "#00bcd4",
+                  "&:hover": { backgroundColor: "#00acc1" },
+                  width: "100%",
+                }}
+              >
+                Register Vehicle
+              </Button>
+            </form>
 
-            <TextField
-              select
-              label="Fuel Type"
-              name="fuelType"
-              value={formData.fuelType}
-              onChange={handleChange}
-              fullWidth
-              required
-              margin="normal"
-              InputLabelProps={{ style: { color: "#ccc" } }}
-              sx={{ input: { color: "white" } }}
-            >
-              {fuelTypes.map((fuel) => (
-                <MenuItem key={fuel} value={fuel}>
-                  {fuel}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              label="Year"
-              name="year"
-              type="number"
-              value={formData.year}
-              onChange={handleChange}
-              error={!!errors.year}
-              helperText={errors.year}
-              fullWidth
-              required
-              margin="normal"
-              InputLabelProps={{ style: { color: "#ccc" } }}
-              sx={{ input: { color: "white" } }}
-            />
-
-            <TextField
-              label="Kilometers"
-              name="kilometers"
-              type="number"
-              value={formData.kilometers}
-              onChange={handleChange}
-              error={!!errors.kilometers}
-              helperText={errors.kilometers}
-              fullWidth
-              required
-              margin="normal"
-              InputLabelProps={{ style: { color: "#ccc" } }}
-              sx={{ input: { color: "white" } }}
-            />
-
-            <Button
-              variant="contained"
-              type="submit"
-              sx={{
-                mt: 3,
-                backgroundColor: "#00bcd4",
-                "&:hover": { backgroundColor: "#00acc1" },
-                width: "100%",
-              }}
-            >
-              Register Vehicle
-            </Button>
-          </form>
         </Paper>
       </Box>
     </Box>
