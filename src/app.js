@@ -9,7 +9,7 @@ import { Admin } from "./admin";
 import Header from "./Header";
 import AddVehicle from "./addVehicle"
 import Newsletter from "./newsletter";
-import ProtectedAdminRoute from "./protectedAdminRoute"; // import the protected route
+import ProtectedAdminRoute from "./protectedAdminRoute"; // import the protected rout
 
 function AppWrapper() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
