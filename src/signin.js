@@ -17,24 +17,50 @@ import {jwtDecode} from "jwt-decode";
 export const SignIn = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isGoogleUser, setIsGoogleUser] = useState(false);
 
+  // ----------------------
+  // Manual Email/Password Login
+  // ----------------------
+ const handleSignIn = async (e) => {
+  e.preventDefault();
+
+  const res = await fetch("http://localhost:3007/api/auth/signin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+  console.log("Signin response:", data);
+
+  if (data.success) {
+    localStorage.setItem("userEmail", data.email);
+    localStorage.setItem("role", data.role);
+    localStorage.setItem("token", data.token);
+
+    // Redirect based on role
+    if (data.role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
+  } else {
+    console.error("Signin failed:", data.message);
+    alert(data.message); // optional: show user error
+  }
+};
+
+
+  // ----------------------
+  // Google Login
+  // ----------------------
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       if (!credentialResponse || !credentialResponse.credential) return;
 
       const decoded = jwtDecode(credentialResponse.credential);
-
-      const userData = {
-        id_token: credentialResponse.credential,
-        email: decoded.email,
-        name: decoded.name,
-        google_id: decoded.sub,
-      };
-
-      console.log("Prepared user data:", userData);
-
       const res = await fetch("http://localhost:3007/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,18 +68,16 @@ export const SignIn = () => {
       });
 
       const data = await res.json();
-      console.log("Backend response:", data);
+      console.log("Google login response:", data);
 
       if (data.success) {
-        setEmail(data.email || "");
-        setUsername(data.name?.split(" ")[0] || "");
-        setIsGoogleUser(true);
         localStorage.setItem("userEmail", data.email);
 
-        // ✅ Redirect to dashboard
-        navigate("/dashboard");
+        // Redirect based on role
+        if (data.role === "admin") navigate("/admindashboard");
+        else navigate("/dashboard");
       } else {
-        console.error("Google signup failed:", data.error);
+        console.error("Google login failed:", data.message);
       }
     } catch (err) {
       console.error("Google login error:", err);
@@ -107,19 +131,19 @@ export const SignIn = () => {
                 Sign In
               </Typography>
 
+              {/* Email/Password Form */}
               <Box
                 component="form"
                 sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3 }}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  console.log("Email/password login not yet implemented");
-                }}
+                onSubmit={handleSignIn}
               >
                 <TextField
                   label="Email"
                   variant="outlined"
                   fullWidth
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   InputLabelProps={{ style: { color: "#aaa" } }}
                   InputProps={{ style: { color: "white" } }}
                 />
@@ -129,6 +153,8 @@ export const SignIn = () => {
                   variant="outlined"
                   fullWidth
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   InputLabelProps={{ style: { color: "#aaa" } }}
                   InputProps={{ style: { color: "white" } }}
                 />
@@ -152,6 +178,7 @@ export const SignIn = () => {
                 or
               </Divider>
 
+              {/* Google Login */}
               <Box sx={{ display: "flex", justifyContent: "center" }}>
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
@@ -170,7 +197,7 @@ export const SignIn = () => {
                   Sign Up
                 </Link>
               </Typography>
-                    <Typography
+              <Typography
                 variant="body2"
                 textAlign="center"
                 sx={{ mt: 3, color: "rgba(255,255,255,0.7)" }}

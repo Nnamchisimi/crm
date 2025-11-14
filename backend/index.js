@@ -41,10 +41,95 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date() });
 });
 
+app.post("/api/auth/signin", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ message: "Email and password required" });
+
+  try {
+    const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (users.length === 0)
+      return res.status(401).json({ message: "User not found" });
+
+    const user = users[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ message: "Incorrect password" });
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      surname: user.surname,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+// ✅ Manual Signup
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { name, surname, phoneNumber, email, username, password, is_verified } = req.body;
+
+    if (!name || !surname || !email || !username || (!password && !is_verified)) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Optional: check if user already exists
+    const [existing] = await pool.query(
+      "SELECT * FROM users WHERE email = ? OR username = ?",
+      [email, username]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash password if provided (only for manual signup)
+    let hashedPassword = null;
+    if (password) {
+      const bcrypt = require("bcrypt");
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
+
+    const sql = `
+      INSERT INTO users (name, surname, username, email, phone_number, password, is_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const [result] = await pool.execute(sql, [
+      name,
+      surname,
+      username,
+      email,
+      phoneNumber || null,
+      hashedPassword,
+      is_verified || 0,
+    ]);
+
+    res.status(201).json({ success: true, userId: result.insertId });
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({ message: err.message || "Internal server error" });
+  }
+});
+
+
 // ✅ Google login/signup
 app.post("/api/auth/google", async (req, res) => {
   try {
-    const { id_token } = req.body;
+    const { id_token, username, name, surname, phoneNumber } = req.body;
     if (!id_token) return res.status(400).json({ message: "Missing ID token" });
 
     const ticket = await client.verifyIdToken({
@@ -55,7 +140,6 @@ app.post("/api/auth/google", async (req, res) => {
 
     const google_id = payload.sub;
     const email = payload.email;
-    const username = payload.name;
     const is_verified = 1;
 
     const [existing] = await pool.query(
@@ -65,54 +149,102 @@ app.post("/api/auth/google", async (req, res) => {
 
     if (existing.length === 0) {
       await pool.query(
-        "INSERT INTO users (username, email, google_id, is_verified) VALUES (?, ?, ?, ?)",
-        [username, email, google_id, is_verified]
+        `INSERT INTO users 
+        (name, surname, username, email, google_id, phone_number, is_verified) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [name, surname, username, email, google_id, phoneNumber || null, is_verified]
       );
       console.log(`🆕 New Google user inserted: ${email}`);
     } else {
       console.log(`✅ Google user already exists: ${email}`);
     }
 
-    res.json({ success: true, email, username });
+    res.json({ success: true, email, username, name, surname, phoneNumber });
   } catch (err) {
     console.error("❌ Google login error:", err);
     res.status(500).json({ message: err.message || "Google login failed" });
   }
 });
 
+
 // ✅ Add Vehicle
 app.post("/api/vehicles", async (req, res) => {
-  const { vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers, email } = req.body;
+  const {
+    name,
+    surname,
+    phoneNumber,
+    vin,
+    licensePlate,
+    brand,
+    model,
+    vehicleType,
+    fuelType,
+    year,
+    kilometers,
+    email
+  } = req.body;
 
-  if (!vin || !licensePlate || !brand || !model || !vehicleType || !fuelType || !year || !kilometers || !email) {
+  // Validate required fields
+  if (
+    !name ||
+    !surname ||
+    !phoneNumber ||
+    !vin ||
+    !licensePlate ||
+    !brand ||
+    !model ||
+    !vehicleType ||
+    !fuelType ||
+    !year ||
+    !kilometers ||
+    !email
+  ) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
+    // Check if VIN or license plate already exists
     const [existing] = await pool.query(
       "SELECT * FROM vehicles WHERE vin = ? OR license_plate = ?",
       [vin, licensePlate]
     );
 
     if (existing.length > 0) {
-      return res.status(400).json({ message: "Vehicle with this VIN or license plate already exists" });
+      return res
+        .status(400)
+        .json({ message: "Vehicle with this VIN or license plate already exists" });
     }
 
+    // Insert new vehicle
     const sql = `
       INSERT INTO vehicles
-      (vin, license_plate, brand, model, vehicle_type, fuel_type, year, kilometers, email)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, surname, phone_number, vin, license_plate, brand, model, vehicle_type, fuel_type, year, kilometers, email)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await pool.execute(sql, [vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers, email]);
+
+    const [result] = await pool.execute(sql, [
+      name,
+      surname,
+      phoneNumber,
+      vin,
+      licensePlate,
+      brand,
+      model,
+      vehicleType,
+      fuelType,
+      year,
+      kilometers,
+      email
+    ]);
 
     res.status(201).json({
       message: "Vehicle registered successfully!",
-      vehicleId: result.insertId,
+      vehicleId: result.insertId
     });
   } catch (error) {
     console.error("❌ Vehicle insert error:", error);
     res.status(500).json({
-      message: error.sqlMessage || error.message || "Internal server error",
+      message: error.sqlMessage || error.message || "Internal server error"
     });
   }
 });
