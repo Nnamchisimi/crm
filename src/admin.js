@@ -12,17 +12,18 @@ import {
 import { title } from "framer-motion/client";
 
 export const Admin = () => {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    type: "",
-    priority: "",
-    brand: "",
-    model: "",
-    year: "",
-    discount: "",
-    validUntil: "",
-  });
+ const [formData, setFormData] = useState({
+  campaign_title: "",
+  description: "",
+  maintenance_type: "",
+  priority: "",
+  brand_filter: "",
+  model_filter: "",
+  year_filter: "",
+  discount_percent: "",
+  valid_until: "",
+});
+
 
   // NEW: control which section is visible
   const [activeSection, setActiveSection] = useState(null);
@@ -482,195 +483,242 @@ export const Admin = () => {
 )}
 
 
+ {/*SECTION 4: Create Service Campaign Form*/}
+{/*SECTION 4: Create Service Campaign Form*/}
+{activeSection === "Campaigns" && (
+  <Box>
+    <Typography variant="h5" fontWeight="bold" gutterBottom>
+      Create Service Campaign
+    </Typography>
+    <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
+      Add new service campaigns and offers
+    </Typography>
 
-      {/*SECTION 4: Create Service Campaign Form*/}
-      {activeSection === "Campaigns" && ( // 👈 show only when "Campaigns" is active
-        <Box>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
-            Create Service Campaign
-          </Typography>
-          <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-            Add new service campaigns and offers
-          </Typography>
+    <Paper
+      sx={{
+        p: 4,
+        borderRadius: 3,
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        maxWidth: 1500,
+        mx: "auto",
+        minHeight: "300px",
+        height: "60vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+      }}
+    >
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          // send formData with keys matching the database columns
+          const payload = {
+            campaign_title: formData.campaign_title,
+            description: formData.description,
+            maintenance_type: formData.maintenance_type,
+            priority: formData.priority,
+            brand_filter: formData.brand_filter,
+            model_filter: formData.model_filter,
+            year_filter: formData.year_filter,
+            discount_percent: formData.discount_percent,
+            valid_until: formData.valid_until,
+          };
 
-          <Paper
-            sx={{
-              p: 4,
-              borderRadius: 3,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              maxWidth: 1500,
-              mx: "auto",
-              minHeight: "300px",
-              height: "60vh",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Campaign Title"
-                    name="title"
-                    placeholder="e.g., Winter Tire Special"
-                    value={formData.title}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          try {
+            const res = await fetch("http://localhost:3007/api/campaigns", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
 
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={1}
-                    label="Description"
-                    name="description"
-                    placeholder="Campaign details..."
-                    value={formData.description}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+            const data = await res.json();
+            if (res.ok) {
+              alert("Campaign created successfully!");
+              setFormData({
+                campaign_title: "",
+                description: "",
+                maintenance_type: "",
+                priority: "",
+                brand_filter: "",
+                model_filter: "",
+                year_filter: "",
+                discount_percent: "",
+                valid_until: "",
+              });
+            } else {
+              alert("Error: " + data.message);
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Server error, please try again.");
+          }
+        }}
+      >
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Campaign Title"
+              name="campaign_title"
+              placeholder="e.g., Winter Tire Special"
+              value={formData.campaign_title}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Type"
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  >
-                    {campaignTypes.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              label="Description"
+              name="description"
+              placeholder="Campaign details..."
+              value={formData.description}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Priority"
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  >
-                    {priorityLevels.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Type"
+              name="maintenance_type"
+              value={formData.maintenance_type}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            >
+              {campaignTypes.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Brand Filter"
-                    name="brand"
-                    placeholder="e.g., Toyota"
-                    value={formData.brand}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            >
+              {priorityLevels.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Model Filter"
-                    name="model"
-                    placeholder="e.g., Camry"
-                    value={formData.model}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Brand Filter"
+              name="brand_filter"
+              placeholder="e.g., Toyota"
+              value={formData.brand_filter}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Year Filter"
-                    name="year"
-                    placeholder="e.g., 2020"
-                    value={formData.year}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Model Filter"
+              name="model_filter"
+              placeholder="e.g., Camry"
+              value={formData.model_filter}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Discount %"
-                    name="discount"
-                    placeholder="e.g., 20"
-                    value={formData.discount}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Year Filter"
+              name="year_filter"
+              placeholder="e.g., 2020"
+              value={formData.year_filter}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Valid Until"
-                    name="validUntil"
-                    placeholder="dd/mm/yyyy"
-                    value={formData.validUntil}
-                    onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
-                    InputProps={{ style: { color: "white" } }}
-                    variant="outlined"
-                  />
-                </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Discount %"
+              name="discount_percent"
+              placeholder="e.g., 20"
+              value={formData.discount_percent}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
 
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    type="submit"
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "#00bcd4",
-                      "&:hover": { backgroundColor: "#00acc1" },
-                      color: "black",
-                      fontWeight: "bold",
-                      py: 1.5,
-                    }}
-                  >
-                    Create Campaign
-                  </Button>
-                </Grid>
-              </Grid>
-            </form>
-          </Paper>
-        </Box>
-      )}
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Valid Until"
+              name="valid_until"
+              placeholder="yyyy-mm-dd"
+              value={formData.valid_until}
+              onChange={handleChange}
+              InputLabelProps={{ style: { color: "#ccc" } }}
+              InputProps={{ style: { color: "white" } }}
+              variant="outlined"
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              sx={{
+                backgroundColor: "#00bcd4",
+                "&:hover": { backgroundColor: "#00acc1" },
+                color: "black",
+                fontWeight: "bold",
+                py: 1.5,
+              }}
+            >
+              Create Campaign
+            </Button>
+          </Grid>
+        </Grid>
+      </form>
+    </Paper>
+  </Box>
+)}
+
+      
     </Box>
   );
 };

@@ -1,5 +1,8 @@
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
 const mysql = require("mysql2/promise");
 const { OAuth2Client } = require("google-auth-library");
 require("dotenv").config();
@@ -42,25 +45,39 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post("/api/auth/signin", async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ message: "Email and password required" });
-
   try {
+    const { email, password } = req.body;
+
+    console.log("🔍 Signin request:", req.body);
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // Check if user exists
     const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-    if (users.length === 0)
+
+    if (users.length === 0) {
       return res.status(401).json({ message: "User not found" });
+    }
 
     const user = users[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Incorrect password" });
 
-    // Create JWT token
+    // Compare password
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "supersecretkey",
       { expiresIn: "1h" }
     );
+
+    console.log("✅ User logged in:", user.email);
 
     res.json({
       success: true,
@@ -70,11 +87,13 @@ app.post("/api/auth/signin", async (req, res) => {
       name: user.name,
       surname: user.surname,
     });
+
   } catch (err) {
-    console.error(err);
+    console.error("❌ SIGNIN ERROR:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 // ✅ Manual Signup
@@ -322,24 +341,61 @@ app.post("/api/newsletter/send", async (req, res) => {
   }
 });
 
+// ✅ Get all service campaigns
+app.get("/api/campaigns", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT * FROM service_campaigns ORDER BY created_at DESC");
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Failed to fetch campaigns:", error);
+    res.status(500).json({ message: error.message || "Internal server error" });
+  }
+});
 
 
 
-
-// ✅ Add Campaign (optional, if needed)
+// ✅ Add Campaign
 app.post("/api/campaigns", async (req, res) => {
-  const { subject, message, audience } = req.body;
-  if (!subject || !message || !audience) {
-    return res.status(400).json({ message: "All fields are required" });
+  const {
+    campaign_title,
+    description,
+    maintenance_type,
+    priority,
+    brand_filter,
+    model_filter,
+    year_filter,
+    discount_percent,
+    valid_until,
+  } = req.body;
+
+  // Basic validation
+  if (!campaign_title || !description || !maintenance_type || !priority) {
+    return res.status(400).json({ message: "Required fields missing." });
   }
 
   try {
     const sql = `
-      INSERT INTO bulk_email_campaigns (subject, message, audience)
-      VALUES (?, ?, ?)
+      INSERT INTO service_campaigns 
+      (campaign_title, description, maintenance_type, priority, brand_filter, model_filter, year_filter, discount_percent, valid_until)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await pool.execute(sql, [subject, message, audience]);
-    res.status(201).json({ message: "Campaign created successfully!", id: result.insertId });
+
+    const [result] = await pool.execute(sql, [
+      campaign_title,
+      description,
+      maintenance_type,
+      priority,
+      brand_filter || null,
+      model_filter || null,
+      year_filter || null,
+      discount_percent || null,
+      valid_until || null,
+    ]);
+
+    res.status(201).json({
+      message: "Campaign created successfully!",
+      id: result.insertId,
+    });
   } catch (error) {
     console.error("❌ Campaign insert error:", error);
     res.status(500).json({

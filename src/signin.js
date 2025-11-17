@@ -21,9 +21,10 @@ export const SignIn = () => {
   const [isGoogleUser, setIsGoogleUser] = useState(false);
 
   // ----------------------
-  // Manual Email/Password Login
-  // ----------------------
- const handleSignIn = async (e) => {
+ // ----------------------
+// Manual Email/Password Login
+// ----------------------
+const handleSignIn = async (e) => {
   e.preventDefault();
 
   const res = await fetch("http://localhost:3007/api/auth/signin", {
@@ -40,49 +41,44 @@ export const SignIn = () => {
     localStorage.setItem("role", data.role);
     localStorage.setItem("token", data.token);
 
-    // Redirect based on role
-    if (data.role === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard");
-    }
+    if (data.role === "admin") navigate("/admin");
+    else navigate("/dashboard");
   } else {
-    console.error("Signin failed:", data.message);
-    alert(data.message); // optional: show user error
+    alert(data.message);
   }
 };
 
 
-  // ----------------------
-  // Google Login
-  // ----------------------
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      if (!credentialResponse || !credentialResponse.credential) return;
+// ----------------------
+// Google Login
+// ----------------------
+const handleGoogleSuccess = async (credentialResponse) => {
+  try {
+    if (!credentialResponse?.credential) return;
 
-      const decoded = jwtDecode(credentialResponse.credential);
-      const res = await fetch("http://localhost:3007/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
-      });
+    const res = await fetch("http://localhost:3007/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: credentialResponse.credential }),
+    });
 
-      const data = await res.json();
-      console.log("Google login response:", data);
+    const data = await res.json();
+    console.log("Google login response:", data);
 
-      if (data.success) {
-        localStorage.setItem("userEmail", data.email);
+    if (data.success) {
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("token", data.token);
 
-        // Redirect based on role
-        if (data.role === "admin") navigate("/admindashboard");
-        else navigate("/dashboard");
-      } else {
-        console.error("Google login failed:", data.message);
-      }
-    } catch (err) {
-      console.error("Google login error:", err);
+      if (data.role === "admin") navigate("/admin");
+      else navigate("/dashboard");
+    } else {
+      console.error("Google login failed:", data.message);
     }
-  };
+  } catch (err) {
+    console.error("Google login error:", err);
+  }
+};
 
   const handleGoogleError = () => {
     console.error("Google Login Failed");

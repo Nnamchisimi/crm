@@ -10,10 +10,8 @@ import {
   Drawer,
   List,
   ListItem,
-  ListItemIcon,
   ListItemText,
   IconButton,
-  Toolbar,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -26,63 +24,56 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EmailIcon from "@mui/icons-material/Email";
 
-// Mock campaigns data
-const campaignsMock = [
-  {
-    id: 1,
-    title: "Winter Service Package",
-    description: "Get your vehicle ready for winter with 20% off on maintenance",
-    priority: "medium",
-    discount: "20% OFF",
-    validUntil: "31/03/2025",
-    type: "Special Offer",
-  },
-  {
-    id: 2,
-    title: "Software Update Required",
-    description: "Critical infotainment system update available",
-    priority: "high",
-    discount: null,
-    validUntil: "30/06/2025",
-    type: "Recall",
-  },
-  {
-    id: 3,
-    title: "Spring Maintenance Special",
-    description: "15% off on all spring maintenance services",
-    priority: "low",
-    discount: "15% OFF",
-    validUntil: "31/05/2025",
-    type: "Special Offer",
-  },
-];
-
 const drawerWidth = 240;
 
 const CampaignsPage = () => {
-  const [campaigns, setCampaigns] = useState([]);
+  const [allCampaigns, setAllCampaigns] = useState([]);
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch campaigns from backend
   useEffect(() => {
-    setCampaigns(campaignsMock);
+    const fetchCampaigns = async () => {
+      try {
+        const res = await fetch("http://localhost:3007/api/campaigns");
+        const data = await res.json();
+        const mappedCampaigns = data.map(c => ({
+          id: c.id,
+          title: c.campaign_title,
+          description: c.description,
+          type: c.maintenance_type,
+          priority: c.priority,
+          brand: c.brand_filter,
+          model: c.model_filter,
+          year: c.year_filter,
+          discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
+          validUntil: new Date(c.valid_until).toLocaleDateString("en-GB"),
+        }));
+        setAllCampaigns(mappedCampaigns);
+      } catch (err) {
+        console.error("Failed to fetch campaigns:", err);
+      }
+    };
+
+    fetchCampaigns();
   }, []);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case "high":
-        return "red";
-      case "medium":
-        return "orange";
-      case "low":
-        return "green";
-      default:
-        return "gray";
+      case "high": return "red";
+      case "medium": return "orange";
+      case "low": return "green";
+      default: return "gray";
     }
   };
 
+  // Move campaign from allCampaigns to activeCampaigns
+  const bookCampaign = (campaign) => {
+    setActiveCampaigns(prev => [...prev, campaign]);
+    setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+  };
 
-  // Sidebar
   const sidebarItems = [
     { text: "Home", icon: <HomeIcon />, path: "/" },
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
@@ -98,7 +89,11 @@ const CampaignsPage = () => {
         variant="h5"
         fontWeight="bold"
         gutterBottom
-        sx={{ background: "linear-gradient(90deg, #fff, #00bcd4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+        sx={{
+          background: "linear-gradient(90deg, #fff, #00bcd4)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+        }}
       >
         AutoCRM
       </Typography>
@@ -129,7 +124,11 @@ const CampaignsPage = () => {
       </Box>
 
       {/* Mobile Drawer */}
-      <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}>
+      <Drawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}
+      >
         {drawer}
       </Drawer>
 
@@ -139,58 +138,21 @@ const CampaignsPage = () => {
       </Box>
 
       {/* Main Content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 4,
-          background: "#111",
-          color: "white",
-          ml: { sm: `${drawerWidth}px` },
-        }}
-      >
-        {/* Page Title */}
+      <Box component="main" sx={{ flexGrow: 1, p: 4, background: "#111", color: "white", ml: { sm: `${drawerWidth}px` } }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Service Campaigns
         </Typography>
         <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 4 }}>
-          Active campaigns and special offers for your vehicles
+          Active campaigns and all available campaigns for your vehicles
         </Typography>
 
-        {/* Summary Section */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={4}>
-            <Paper sx={{ p: 2, borderRadius: 2, background: "rgba(255,255,255,0.05)" }}>
-              <Typography>Total Campaigns</Typography>
-              <Typography variant="h5" fontWeight="bold">{campaigns.length}</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Paper sx={{ p: 2, borderRadius: 2, background: "rgba(255,255,255,0.05)" }}>
-              <Typography>Recalls</Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {campaigns.filter(c => c.type === "Recall").length}
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Paper sx={{ p: 2, borderRadius: 2, background: "rgba(255,255,255,0.05)" }}>
-              <Typography>Special Offers</Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {campaigns.filter(c => c.type === "Special Offer").length}
-              </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ mb: 4, borderColor: "rgba(255,255,255,0.2)" }} />
-
-        {/* Active Campaigns */}
+        {/* Active Campaigns Section */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Your Active Campaigns
         </Typography>
-        <Grid container spacing={3}>
-          {campaigns.map((c) => (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {activeCampaigns.length === 0 && <Typography>No active campaigns currently.</Typography>}
+          {activeCampaigns.map(c => (
             <Grid item xs={12} md={6} key={c.id}>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
@@ -202,7 +164,7 @@ const CampaignsPage = () => {
                   {c.discount && <Typography sx={{ fontWeight: "bold" }}>{c.discount}</Typography>}
                   <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.7)" }}>Valid until: {c.validUntil}</Typography>
                   <Button sx={{ mt: 2 }} variant="contained" color="primary">
-                    Book Appointment
+                    Cancel Appointment
                   </Button>
                 </Paper>
               </motion.div>
@@ -212,18 +174,30 @@ const CampaignsPage = () => {
 
         <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.2)" }} />
 
-        {/* All Available Campaigns */}
+        {/* All Available Campaigns Section */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           All Available Campaigns
         </Typography>
-        {campaigns.map((c) => (
-          <Paper key={c.id} sx={{ p: 2, borderRadius: 2, mb: 2, background: "rgba(255,255,255,0.05)" }}>
-            <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
-            <Typography sx={{ mb: 1 }}>{c.description}</Typography>
-            {c.discount && <Typography>{c.discount}</Typography>}
-            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>Valid until: {c.validUntil}</Typography>
-          </Paper>
-        ))}
+        <Grid container spacing={3}>
+          {allCampaigns.map(c => (
+            <Grid item xs={12} md={6} key={c.id}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
+                    <Chip label={c.priority} sx={{ bgcolor: getPriorityColor(c.priority), color: "white" }} />
+                  </Box>
+                  <Typography sx={{ mb: 1 }}>{c.description}</Typography>
+                  {c.discount && <Typography sx={{ fontWeight: "bold" }}>{c.discount}</Typography>}
+                  <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.7)" }}>Valid until: {c.validUntil}</Typography>
+                  <Button sx={{ mt: 2 }} variant="contained" color="primary" onClick={() => bookCampaign(c)}>
+                    Book Appointment
+                  </Button>
+                </Paper>
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
     </Box>
   );
