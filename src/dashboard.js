@@ -11,6 +11,7 @@ import {
   ListItem,
   IconButton,
   ListItemText,
+  Chip,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -29,11 +30,16 @@ const Dashboard = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [vehicles, setVehicles] = useState([]);
 
+  // Campaign states
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
+  const [allCampaigns, setAllCampaigns] = useState([]);
+  const userEmail = localStorage.getItem("userEmail");
+
   // Stats
   const stats = [
     { title: "Total Vehicles", value: vehicles.length },
     { title: "Upcoming Bookings", value: 0 },
-    { title: "Active Campaigns", value: 3 },
+    { title: "Active Campaigns", value: activeCampaigns.length },
   ];
 
   // Fetch vehicles
@@ -41,11 +47,9 @@ const Dashboard = () => {
     fetch("http://localhost:3007/api/vehicles")
       .then((res) => res.json())
       .then((data) => {
-        // Adjust based on API response structure
         if (Array.isArray(data)) setVehicles(data);
         else if (Array.isArray(data.vehicles)) setVehicles(data.vehicles);
         else setVehicles([]);
-        console.log("Vehicles fetched:", data);
       })
       .catch((err) => {
         console.error("Error fetching vehicles:", err);
@@ -53,7 +57,68 @@ const Dashboard = () => {
       });
   }, []);
 
-  // Sidebar
+  // Fetch campaigns
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`);
+        const data = await res.json();
+        const mapped = data.map((c) => ({ ...c, bookedByUser: !!c.bookedByUser }));
+        setActiveCampaigns(mapped.filter((c) => c.bookedByUser));
+        setAllCampaigns(mapped.filter((c) => !c.bookedByUser));
+      } catch (err) {
+        console.error("Failed to fetch campaigns:", err);
+      }
+    };
+    fetchCampaigns();
+  }, [userEmail]);
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "high":
+        return "red";
+      case "medium":
+        return "orange";
+      case "low":
+        return "green";
+      default:
+        return "gray";
+    }
+  };
+
+  const cancelCampaign = async (campaign, email) => {
+    try {
+      const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await res.json();
+      if (!res.ok) return alert(result.message);
+      setActiveCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
+      setAllCampaigns((prev) => [...prev, { ...campaign, bookedByUser: false }]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const bookCampaign = async (campaign) => {
+    try {
+      const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/book`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail }),
+      });
+      const result = await res.json();
+      if (!res.ok) return alert(result.message);
+      setAllCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
+      setActiveCampaigns((prev) => [...prev, { ...campaign, bookedByUser: true }]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Sidebar items
   const sidebarItems = [
     { text: "Home", icon: <HomeIcon />, path: "/" },
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
@@ -80,7 +145,10 @@ const Dashboard = () => {
             key={idx}
             button
             sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
-            onClick={() => { navigate(item.path); setMobileOpen(false); }}
+            onClick={() => {
+              navigate(item.path);
+              setMobileOpen(false);
+            }}
           >
             {item.icon}
             <ListItemText primary={item.text} sx={{ ml: 2 }} />
@@ -132,102 +200,117 @@ const Dashboard = () => {
           ))}
         </Grid>
 
-       {/* My Vehicles Section */}
-                <Box mt={6}>
-                  <Typography variant="h5" fontWeight="bold" gutterBottom>
-                    My Vehicles
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddCircleOutlineIcon />}
-                    sx={{ 
-                      backgroundColor: "#00bcd4", 
-                      "&:hover": { backgroundColor: "#00acc1" }, 
-                      mb: 2 
-                    }}
-                    onClick={() => navigate("/addVehicle")}
-                  >
-                    Add Vehicle
-                  </Button>
+        {/* My Vehicles Section */}
+        <Box mt={6}>
+          <Typography variant="h5" fontWeight="bold" gutterBottom>
+            My Vehicles
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddCircleOutlineIcon />}
+            sx={{
+              backgroundColor: "#00bcd4",
+              "&:hover": { backgroundColor: "#00acc1" },
+              mb: 2,
+            }}
+            onClick={() => navigate("/addVehicle")}
+          >
+            Add Vehicle
+          </Button>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      justifyContent: "flex-start",
-                      gap: 3,
-                    }}
-                  >
-                    {vehicles.length === 0 ? (
-                      <Paper
-                        sx={{
-                          width: 360, // standard fixed width
-                          height: 220, // standard fixed height
-                          p: 3,
-                          borderRadius: 3,
-                          textAlign: "center",
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-                          No vehicles registered yet.
-                        </Typography>
-                      </Paper>
-                    ) : (
-                      vehicles.map((vehicle, index) => (
-                        <Paper
-                          key={vehicle.id || index}
-                          sx={{
-                            width: 360, // fixed width
-                            height: 220, // fixed height
-                            display: "flex",
-                            flexDirection: "column",
-                            justifyContent: "space-between",
-                            p: 2,
-                            borderRadius: 3,
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                          }}
-                        >
-                          <Box>
-                            <Typography variant="h6">
-                              {vehicle.brand || "---"} {vehicle.model || "---"}
-                            </Typography>
-                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-                              {vehicle.licensePlate || "---"} • {vehicle.year || "---"}
-                            </Typography>
-                            <Typography sx={{ mt: 1 }}>Active</Typography>
-                            <Typography>CRM Number: {vehicle.crmNumber || "---"}</Typography>
-                            <Typography>
-                              Kilometers: {vehicle.kilometers?.toLocaleString() || 0} km
-                            </Typography>
-                          </Box>
-                          <Button
-                            variant="outlined"
-                            sx={{ mt: 1, color: "white", borderColor: "white" }}
-                            onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                          >
-                            View Details
-                          </Button>
-                        </Paper>
-                      ))
-                    )}
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", gap: 3 }}>
+            {vehicles.length === 0 ? (
+              <Paper
+                sx={{
+                  width: 360,
+                  height: 220,
+                  p: 3,
+                  borderRadius: 3,
+                  textAlign: "center",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>No vehicles registered yet.</Typography>
+              </Paper>
+            ) : (
+              vehicles.map((vehicle, index) => (
+                <Paper
+                  key={vehicle.id || index}
+                  sx={{
+                    width: 360,
+                    height: 220,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    p: 2,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Box>
+                    <Typography variant="h6">{vehicle.brand || "---"} {vehicle.model || "---"}</Typography>
+                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+                      {vehicle.licensePlate || "---"} • {vehicle.year || "---"}
+                    </Typography>
+                    <Typography sx={{ mt: 1 }}>Active</Typography>
+                    <Typography>CRM Number: {vehicle.crmNumber || "---"}</Typography>
+                    <Typography>Kilometers: {vehicle.kilometers?.toLocaleString() || 0} km</Typography>
                   </Box>
-                </Box>
+                  <Button
+                    variant="outlined"
+                    sx={{ mt: 1, color: "white", borderColor: "white" }}
+                    onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                  >
+                    View Details
+                  </Button>
+                </Paper>
+              ))
+            )}
+          </Box>
+        </Box>
 
         {/* Recent Bookings Section */}
         <Box mt={6}>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             Recent Bookings
           </Typography>
-          <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", textAlign: "center" }}>
-            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>No bookings yet.</Typography>
-          </Paper>
+              <Grid container spacing={3}>
+                {activeCampaigns.map((c) => (
+                  <Grid item xs={12} md={6} key={c.id}>
+                    <Paper
+                             onClick={() => navigate("/campaigns")} // redirect to campaigns page
+                      sx={{
+                        p: 3,
+                        borderRadius: 3,
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        "&:hover": { background: "rgba(255,255,255,0.1)" }
+                      }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
+                        <Chip label={c.priority} sx={{ bgcolor: getPriorityColor(c.priority), color: "white" }} />
+                      </Box>
+                      <Typography sx={{ mb: 1 }}>{c.description}</Typography>
+                      {c.discount && <Typography sx={{ fontWeight: "bold" }}>{c.discount}</Typography>}
+                      <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.7)" }}>Valid until: {c.validUntil}</Typography>
+                      <Typography sx={{ mt: 2, fontStyle: "italic", color: "rgba(255,255,255,0.6)" }}>
+                     
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+
         </Box>
+
+        
       </Box>
     </Box>
   );

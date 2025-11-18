@@ -32,13 +32,15 @@ const CampaignsPage = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch campaigns from backend
+  const userEmail = localStorage.getItem("userEmail"); // Logged-in user email
+
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const res = await fetch("http://localhost:3007/api/campaigns");
+        const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`);
         const data = await res.json();
-        const mappedCampaigns = data.map(c => ({
+
+        const mapped = data.map(c => ({
           id: c.id,
           title: c.campaign_title,
           description: c.description,
@@ -48,16 +50,19 @@ const CampaignsPage = () => {
           model: c.model_filter,
           year: c.year_filter,
           discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
-          validUntil: new Date(c.valid_until).toLocaleDateString("en-GB"),
+          validUntil: c.validUntil, // use backend-formatted date
+          bookedByUser: !!c.bookedByUser, // <-- use backend's flag 
         }));
-        setAllCampaigns(mappedCampaigns);
+
+        setActiveCampaigns(mapped.filter(c => c.bookedByUser));
+        setAllCampaigns(mapped.filter(c => !c.bookedByUser));
       } catch (err) {
         console.error("Failed to fetch campaigns:", err);
       }
     };
 
     fetchCampaigns();
-  }, []);
+  }, [userEmail]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -68,11 +73,59 @@ const CampaignsPage = () => {
     }
   };
 
-  // Move campaign from allCampaigns to activeCampaigns
-  const bookCampaign = (campaign) => {
-    setActiveCampaigns(prev => [...prev, campaign]);
+const bookCampaign = async (campaign) => {
+  try {
+    const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/book`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: userEmail }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      return alert(result.message || "Failed to book campaign");
+    }
+
+    // Remove from allCampaigns and add to activeCampaigns
     setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
-  };
+
+    setActiveCampaigns(prev => [
+      ...prev,
+      { ...campaign, bookedByUser: true }
+    ]);
+
+  } catch (err) {
+    console.error("Failed to book campaign:", err);
+  }
+};
+
+
+const cancelCampaign = async (campaign, email) => {
+  try {
+    const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const result = await res.json();
+    console.log("Cancel response:", result);
+
+    if (!res.ok) return alert(result.message);
+
+    // Remove from active campaigns
+    setActiveCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+
+    // Add back to available campaigns
+    setAllCampaigns(prev => [...prev, { ...campaign, bookedByUser: false }]);
+
+  } catch (err) {
+    console.error("Failed to cancel campaign:", err);
+  }
+};
+
+
 
   const sidebarItems = [
     { text: "Home", icon: <HomeIcon />, path: "/" },
@@ -115,7 +168,7 @@ const CampaignsPage = () => {
   );
 
   return (
-    <Box sx={{ display: "flex", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white" }}>
       {/* Mobile Hamburger */}
       <Box sx={{ position: "fixed", top: 10, left: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -123,7 +176,7 @@ const CampaignsPage = () => {
         </IconButton>
       </Box>
 
-      {/* Mobile Drawer */}
+      {/* Drawer */}
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
@@ -137,8 +190,8 @@ const CampaignsPage = () => {
         {drawer}
       </Box>
 
-      {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, p: 4, background: "#111", color: "white", ml: { sm: `${drawerWidth}px` } }}>
+      {/* Main content */}
+      <Box component="main" sx={{ flexGrow: 1, p: 4, ml: { sm: `${drawerWidth}px` } }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Service Campaigns
         </Typography>
@@ -146,10 +199,8 @@ const CampaignsPage = () => {
           Active campaigns and all available campaigns for your vehicles
         </Typography>
 
-        {/* Active Campaigns Section */}
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Your Active Campaigns
-        </Typography>
+        {/* Active Campaigns */}
+        <Typography variant="h5" fontWeight="bold" gutterBottom>Your Active Campaigns</Typography>
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {activeCampaigns.length === 0 && <Typography>No active campaigns currently.</Typography>}
           {activeCampaigns.map(c => (
@@ -163,7 +214,7 @@ const CampaignsPage = () => {
                   <Typography sx={{ mb: 1 }}>{c.description}</Typography>
                   {c.discount && <Typography sx={{ fontWeight: "bold" }}>{c.discount}</Typography>}
                   <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.7)" }}>Valid until: {c.validUntil}</Typography>
-                  <Button sx={{ mt: 2 }} variant="contained" color="primary">
+                  <Button sx={{ mt: 2 }} variant="contained" color="secondary" onClick={() => cancelCampaign(c, userEmail)}>
                     Cancel Appointment
                   </Button>
                 </Paper>
@@ -174,10 +225,8 @@ const CampaignsPage = () => {
 
         <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.2)" }} />
 
-        {/* All Available Campaigns Section */}
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          All Available Campaigns
-        </Typography>
+        {/* Available Campaigns */}
+        <Typography variant="h5" fontWeight="bold" gutterBottom>All Available Campaigns</Typography>
         <Grid container spacing={3}>
           {allCampaigns.map(c => (
             <Grid item xs={12} md={6} key={c.id}>

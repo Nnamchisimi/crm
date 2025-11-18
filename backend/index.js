@@ -342,15 +342,115 @@ app.post("/api/newsletter/send", async (req, res) => {
 });
 
 // ✅ Get all service campaigns
+// GET /api/campaigns?email=user@example.com
 app.get("/api/campaigns", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: "User email is required" });
+  }
+
   try {
-    const [rows] = await pool.execute("SELECT * FROM service_campaigns ORDER BY created_at DESC");
-    res.json(rows);
-  } catch (error) {
-    console.error("❌ Failed to fetch campaigns:", error);
-    res.status(500).json({ message: error.message || "Internal server error" });
+    const [rows] = await pool.query(`
+      SELECT 
+        sc.id,
+        sc.campaign_title,
+        sc.description,
+        sc.maintenance_type,
+        sc.priority,
+        sc.brand_filter,
+        sc.model_filter,
+        sc.year_filter,
+        sc.discount_percent,
+        sc.valid_until,
+        CASE WHEN uc.user_email IS NOT NULL THEN 1 ELSE 0 END AS bookedByUser
+      FROM service_campaigns sc
+      LEFT JOIN user_campaigns uc
+        ON sc.id = uc.campaign_id
+        AND uc.user_email = ?
+        AND uc.status = 'active'
+      ORDER BY sc.created_at DESC
+    `, [email]);
+
+    const campaigns = rows.map(c => ({
+      id: c.id,
+      title: c.campaign_title,
+      description: c.description,
+      type: c.maintenance_type,
+      priority: c.priority,
+      brand: c.brand_filter,
+      model: c.model_filter,
+      year: c.year_filter,
+      discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
+      validUntil: c.valid_until ? new Date(c.valid_until).toLocaleDateString("en-GB") : null,
+      bookedByUser: !!c.bookedByUser
+    }));
+
+    res.json(campaigns);
+  } catch (err) {
+    console.error("❌ Failed to fetch campaigns:", err);
+    res.status(500).json({ message: "Server error fetching campaigns" });
   }
 });
+
+
+
+app.post("/api/campaigns/:id/book", async (req, res) => {
+  const { email } = req.body;
+  const { id } = req.params;
+
+  if (!email) return res.status(400).json({ message: "Email required" });
+
+  try {
+    // Check if the user already has an active booking for this campaign
+    const [existing] = await pool.execute(
+      "SELECT * FROM user_campaigns WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
+      [id, email.trim().toLowerCase()]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "You already booked this campaign" });
+    }
+
+    // Insert new active booking
+    await pool.execute(
+      "INSERT INTO user_campaigns (campaign_id, user_email, status) VALUES (?, ?, 'active')",
+      [id, email.trim().toLowerCase()]
+    );
+
+    res.json({ success: true, message: "Campaign booked successfully!" });
+  } catch (err) {
+    console.error("Error booking campaign:", err);
+    res.status(500).json({ message: "Server error booking campaign" });
+  }
+});
+
+
+app.post("/api/campaigns/:id/cancel", async (req, res) => {
+  const { email } = req.body;
+  const { id } = req.params;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      "UPDATE user_campaigns SET status = 'cancelled' WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
+      [id, email]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "No active booking found for this user" });
+    }
+
+    res.json({ success: true, message: "Campaign booking cancelled successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error cancelling campaign" });
+  }
+});
+
 
 
 
