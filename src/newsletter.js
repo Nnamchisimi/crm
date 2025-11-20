@@ -36,8 +36,8 @@ const Newsletter = () => {
   // Form state (email is not editable)
   const [formData, setFormData] = useState({
     phone: "",
-    notifications: { email: false, sms: false, phone: false },
-    preferences: { weeklyDigest: false, monthlyOffers: false, reminders: false },
+    notifications: { email: true, sms: true, phone: true },
+    preferences: { weeklyDigest: true, monthlyOffers: true, reminders: true },
   });
 
   // Handle text input changes (phone)

@@ -12,6 +12,8 @@ import Newsletter from "./newsletter";
 import NotificationsPage from "./NotificationsPage";
 import ProtectedAdminRoute from "./protectedAdminRoute"; // import the protected rout
 import CampaignsPage from "./CampaignsPage";
+import CarDetails from "./CarDetails";
+
 
 function AppWrapper() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -54,6 +56,8 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
         <Route path ="/newsletter"element={<Newsletter setIsLoggedIn={setIsLoggedIn}/>}/>
         <Route path="/notifications" element={<NotificationsPage />} />
          <Route path="/campaigns" element={<CampaignsPage />} />
+         <Route path="/vehicles/:id" element={<CarDetails />} />
+
 
         {/* Protected admin-only routes */}
         <Route

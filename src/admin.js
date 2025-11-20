@@ -631,7 +631,7 @@ export const Admin = () => {
                     name="maintenance_type"
                     value={formData.maintenance_type}
                     onChange={handleChange}
-                    InputLabelProps={{ style: { color: "#ccc" } }}
+                    InputLabelProps={{  shrink: true, style: { color: "#ccc" } }}
                     InputProps={{ style: { color: "white" } }}
                     variant="outlined"
                   >
@@ -642,6 +642,8 @@ export const Admin = () => {
                     ))}
                   </TextField>
                 </Grid>
+
+                
 
                 {/* Priority - Removed fixed width for responsiveness */}
                 <Grid item xs={12} sm={6} md={3}>
@@ -690,7 +692,7 @@ export const Admin = () => {
                     value={formData.valid_until}
                     onChange={handleChange}
                     type="date" 
-                    InputLabelProps={{ style: { color: "#ccc" } }}
+                    InputLabelProps={{  shrink: true, style: { color: "#ccc" } }}
                     InputProps={{ style: { color: "white" } }}
                     variant="outlined"
                   />

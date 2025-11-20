@@ -30,48 +30,107 @@ const Dashboard = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [vehicles, setVehicles] = useState([]);
 
+  const userToken = localStorage.getItem("token"); // <-- New
   // Campaign states
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
   const userEmail = localStorage.getItem("userEmail");
+  // Calculate upcoming bookings based on campaign.validUntil
+// Count how many campaigns share the closest validUntil date
+const getClosestDateCount = () => {
+  if (!activeCampaigns.length) return 0;
+
+  // Convert validUntil to Date objects
+  const dates = activeCampaigns
+    .map(c => new Date(c.validUntil))
+    .filter(d => !isNaN(d));
+
+  if (!dates.length) return 0;
+
+  // Find the closest (minimum) date
+  const closestDate = new Date(Math.min(...dates));
+
+  // Count how many campaigns have exactly this date
+  const count = dates.filter(d => d.getTime() === closestDate.getTime()).length;
+
+  return count;
+};
+
 
   // Stats
   const stats = [
     { title: "Total Vehicles", value: vehicles.length },
-    { title: "Upcoming Bookings", value: 0 },
+    { title: "Upcoming Bookings", value: getClosestDateCount() },
     { title: "Active Campaigns", value: activeCampaigns.length },
   ];
 
-  // Fetch vehicles
-  useEffect(() => {
-    fetch("http://localhost:3007/api/vehicles")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setVehicles(data);
-        else if (Array.isArray(data.vehicles)) setVehicles(data.vehicles);
-        else setVehicles([]);
-      })
-      .catch((err) => {
-        console.error("Error fetching vehicles:", err);
-        setVehicles([]);
-      });
-  }, []);
 
-  // Fetch campaigns
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`);
-        const data = await res.json();
-        const mapped = data.map((c) => ({ ...c, bookedByUser: !!c.bookedByUser }));
-        setActiveCampaigns(mapped.filter((c) => c.bookedByUser));
-        setAllCampaigns(mapped.filter((c) => !c.bookedByUser));
-      } catch (err) {
-        console.error("Failed to fetch campaigns:", err);
-      }
-    };
-    fetchCampaigns();
-  }, [userEmail]);
+  
+ // Fetch vehicles (SECURED)
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      if (!userToken) {
+        console.error("User not authenticated, redirecting.");
+        navigate("/signin");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3007/api/vehicles", {
+          headers: {
+            "Authorization": `Bearer ${userToken}`, // <-- 🔑 SECURITY: Add JWT
+          },
+        });
+        
+        if (res.status === 401 || res.status === 403) {
+          console.error("Authentication failed. Token invalid.");
+          localStorage.removeItem("token");
+          localStorage.removeItem("userEmail");
+          navigate("/signin");
+          return;
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data)) setVehicles(data);
+        else if (Array.isArray(data.vehicles)) setVehicles(data.vehicles);
+        else setVehicles([]);
+      } catch (err) {
+        console.error("Error fetching vehicles:", err);
+        setVehicles([]);
+      }
+    };
+    fetchVehicles();
+  }, [userToken, navigate]);
+
+  // Fetch campaigns (SECURED)
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (!userEmail || !userToken) return;
+
+      try {
+        const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`, {
+          headers: {
+            "Authorization": `Bearer ${userToken}`, // <-- 🔑 SECURITY: Add JWT
+          },
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          console.error("Authentication failed for campaigns.");
+          return;
+        }
+
+        const data = await res.json();
+        const mapped = data.map((c) => ({ ...c, bookedByUser: !!c.bookedByUser }));
+        setActiveCampaigns(mapped.filter((c) => c.bookedByUser));
+        setAllCampaigns(mapped.filter((c) => !c.bookedByUser));
+      } catch (err) {
+        console.error("Failed to fetch campaigns:", err);
+      }
+    };
+    fetchCampaigns();
+  }, [userEmail, userToken]);
+
+
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -220,57 +279,72 @@ const Dashboard = () => {
 
           <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", gap: 3 }}>
             {vehicles.length === 0 ? (
-              <Paper
-                sx={{
-                  width: 360,
-                  height: 220,
-                  p: 3,
-                  borderRadius: 3,
-                  textAlign: "center",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>No vehicles registered yet.</Typography>
-              </Paper>
-            ) : (
-              vehicles.map((vehicle, index) => (
-                <Paper
-                  key={vehicle.id || index}
-                  sx={{
-                    width: 360,
-                    height: 220,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    p: 2,
-                    borderRadius: 3,
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Box>
-                    <Typography variant="h6">{vehicle.brand || "---"} {vehicle.model || "---"}</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-                      {vehicle.licensePlate || "---"} • {vehicle.year || "---"}
-                    </Typography>
-                    <Typography sx={{ mt: 1 }}>Active</Typography>
-                    <Typography>CRM Number: {vehicle.crmNumber || "---"}</Typography>
-                    <Typography>Kilometers: {vehicle.kilometers?.toLocaleString() || 0} km</Typography>
-                  </Box>
-                  <Button
-                    variant="outlined"
-                    sx={{ mt: 1, color: "white", borderColor: "white" }}
-                    onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                  >
-                    View Details
-                  </Button>
-                </Paper>
-              ))
-            )}
+  <Paper
+    sx={{
+      width: 360,
+      height: 220,
+      p: 3,
+      borderRadius: 3,
+      textAlign: "center",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>No vehicles registered yet.</Typography>
+  </Paper>
+) : (
+  vehicles.map((vehicle) => (
+    <Paper
+      key={vehicle.id}
+      sx={{
+        width: 360,
+        p: 2,
+        borderRadius: 3,
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+      }}
+    >
+      
+      <Box>
+        <Typography variant="subtitle1" sx={{ color: "rgba(255,255,255,0.7)" }}>
+          {vehicle.name|| "Unknown Customer"}
+        </Typography>
+        <Typography variant="h6">
+          {vehicle.brand || "---"} {vehicle.model || "---"}
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+          {vehicle.type || "---"} • {vehicle.year || "---"} • {vehicle.licensePlate || "---"}
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+          VIN: {vehicle.vin || "---"}
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+          Fuel: {vehicle.fuel_type || "---"}
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+          Kilometers: {vehicle.kilometers?.toLocaleString() || 0} km
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+          CRM Number: {vehicle.crm_number || "---"}
+        </Typography>
+      </Box>
+      <Button
+        variant="outlined"
+        sx={{ mt: 1, color: "white", borderColor: "white" }}
+        onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+      >
+        View Details
+      </Button>
+    </Paper>
+  ))
+)}
+
           </Box>
         </Box>
 

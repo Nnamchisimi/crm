@@ -69,6 +69,17 @@ app.post("/api/auth/google", async (req, res) => {
     res.status(500).json({ error: "Google login failed" });
   }
 });
+// GET all vehicles
+app.get("/api/vehicles", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM vehicles");
+    res.json(rows);
+  } catch (err) {
+    console.error("Vehicle fetch error:", err);
+    res.status(500).json({ message: "Failed to fetch vehicles" });
+  }
+});
+
 
 // ✅ Add Vehicle route
 app.post("/api/vehicles", async (req, res) => {
