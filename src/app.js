@@ -13,6 +13,7 @@ import NotificationsPage from "./NotificationsPage";
 import ProtectedAdminRoute from "./protectedAdminRoute"; // import the protected rout
 import CampaignsPage from "./CampaignsPage";
 import CarDetails from "./CarDetails";
+import BookService from "./booking";
 
 
 function AppWrapper() {
@@ -57,6 +58,7 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
         <Route path="/notifications" element={<NotificationsPage />} />
          <Route path="/campaigns" element={<CampaignsPage />} />
          <Route path="/vehicles/:id" element={<CarDetails />} />
+         <Route path="booking" element ={<BookService/>}/>
 
 
         {/* Protected admin-only routes */}

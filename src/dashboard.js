@@ -24,6 +24,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EmailIcon from "@mui/icons-material/Email";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -184,7 +185,11 @@ const getClosestDateCount = () => {
     { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
+
+  { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
     { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+    
+
   ];
 
   const drawer = (
@@ -220,7 +225,7 @@ const getClosestDateCount = () => {
   return (
     <Box sx={{ display: "flex", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white", minHeight: "100vh" }}>
       {/* Mobile Hamburger */}
-      <Box sx={{ position: "fixed", top: 10, left: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
+      <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
           <MenuIcon />
         </IconButton>

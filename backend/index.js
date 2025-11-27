@@ -61,6 +61,94 @@ app.get("/api/health", (req, res) => {
 });
 
 // -------------------------------------------------------------
+// 🛠️ BOOKING & SERVICE ROUTES (NEW)
+// -------------------------------------------------------------
+
+// GET /api/service-types - Fetch all available service types
+app.get("/api/service-type", verifyToken, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            "SELECT id, name, description, estimated_time, price, type FROM service_types ORDER BY type, name"
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("Error fetching service type:", err);
+        res.status(500).json({ error: "Failed to fetch service type" });
+    }
+});
+
+// POST /api/bookings - Create a new service booking
+app.post("/api/bookings", verifyToken, async (req, res) => {
+    const {
+        vehicle_id,
+        service_type_id,
+        booking_date,
+        booking_time,
+        notes,
+        campaign_id
+    } = req.body;
+
+    const userEmail = req.user.email; // From JWT
+
+    // Basic validation
+    if (!vehicle_id || !service_type_id || !booking_date || !booking_time) {
+        return res.status(400).json({ message: "Missing required booking fields" });
+    }
+
+    try {
+        // 1. Get vehicle details to verify ownership and grab VIN
+        const [vehicleRows] = await pool.query(
+            "SELECT vin FROM vehicles WHERE id = ? AND email = ?",
+            [vehicle_id, userEmail]
+        );
+
+        if (vehicleRows.length === 0) {
+            return res.status(404).json({ message: "Vehicle not found or unauthorized" });
+        }
+
+        const vin = vehicleRows[0].vin;
+        const fullDateTime = `${booking_date} ${booking_time}`;
+
+        // 2. Insert the new booking
+        const sql = `
+            INSERT INTO service_bookings
+            (user_email, vehicle_id, vin, service_type_id, booking_date_time, notes, campaign_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')
+        `;
+
+        const [result] = await pool.execute(sql, [
+            userEmail,
+            vehicle_id,
+            vin,
+            service_type_id,
+            fullDateTime,
+            notes || null,
+            campaign_id || null // Can be NULL if no campaign is applied
+        ]);
+        
+        // 3. (Optional) If a campaign was used, update the user_campaigns status/link if needed
+        if (campaign_id) {
+            // A simple approach: mark the campaign as 'used' for the user
+            await pool.execute(
+                "UPDATE user_campaigns SET status = 'used', service_booking_id = ? WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
+                [result.insertId, campaign_id, userEmail]
+            );
+        }
+
+
+        res.status(201).json({
+            message: "Service booking created successfully!",
+            bookingId: result.insertId
+        });
+    } catch (error) {
+        console.error("❌ Booking insert error:", error);
+        res.status(500).json({
+            message: error.sqlMessage || error.message || "Internal server error"
+        });
+    }
+});
+
+// -------------------------------------------------------------
 // 🚗 VEHICLE ROUTES (MODIFIED FOR USER FILTERING)
 // -------------------------------------------------------------
 
@@ -81,19 +169,75 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
     }
 });
 
+// Fixed Code for GET /api/vehicles/:id
+// FIXED Code for GET /api/vehicles/:id
 app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
-    // The user's email is available on req.user after verifyToken middleware runs
-    const userEmail = req.user.email;
+    // 1. Get the URL parameter ID and the authenticated user's email
+    const { id } = req.params; 
+    const userEmail = req.user.email; // From JWT payload
+
+    if (isNaN(parseInt(id))) {
+        return res.status(400).json({ message: "Invalid vehicle ID format" });
+    }
 
     try {
+        // 2. Fetch Vehicle Details
         const [rows] = await pool.query(
-            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.email = ? ORDER BY v.id DESC  ",
-            [userEmail] // <-- FILTERING BY THE LOGGED-IN USER'S EMAIL
+            "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ? AND v.email = ?",
+            [id, userEmail] 
         );
-        res.json(rows); // send array of vehicles
+
+        const vehicle = rows[0];
+
+        if (!vehicle) {
+            return res.status(404).json({ message: "Vehicle not found or access denied" });
+        }
+
+        // 🛑 NEW: 3. Fetch Campaigns relevant to this vehicle and user
+        const [campaignsRows] = await pool.query(`
+            SELECT 
+                sc.id,
+                sc.campaign_title,
+                sc.description,
+                sc.priority,
+                sc.discount_percent,
+                sc.valid_until,
+                -- Check if the user has an active booking for this campaign
+                CASE WHEN uc.user_email IS NOT NULL THEN 1 ELSE 0 END AS bookedByUser
+            FROM service_campaigns sc
+            -- Link to user_campaigns to see if the user has booked it
+            LEFT JOIN user_campaigns uc
+                ON sc.id = uc.campaign_id
+                AND uc.user_email = ?
+                AND uc.status = 'active'
+            WHERE 
+                -- Filter by vehicle properties (adjust these WHERE clauses based on your campaign filtering rules)
+                (sc.brand_filter IS NULL OR sc.brand_filter = ?)
+                AND (sc.model_filter IS NULL OR sc.model_filter = ?)
+                AND (sc.year_filter IS NULL OR sc.year_filter = ?)
+                AND sc.valid_until >= CURDATE() -- Only include currently valid campaigns
+            ORDER BY sc.priority DESC
+        `, [userEmail, vehicle.brand, vehicle.model, vehicle.year]);
+
+
+        // 🛑 NEW: 4. Format and Attach Campaigns to the vehicle object
+        vehicle.activeCampaigns = campaignsRows.map(c => ({
+            id: c.id,
+            title: c.campaign_title,
+            description: c.description,
+            priority: c.priority,
+            discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
+            validUntil: c.valid_until ? new Date(c.valid_until).toLocaleDateString("en-GB") : null,
+            bookedByUser: !!c.bookedByUser
+        })).filter(c => !c.bookedByUser); // Only show campaigns that haven't been booked yet (optional filter)
+        
+        // If you want ALL matching campaigns (booked or not), remove the .filter(...) above.
+
+        // 5. Send the merged object
+        res.json(vehicle);
     } catch (err) {
-        console.error("Error fetching vehicles:", err);
-        res.status(500).json({ error: "Failed to fetch vehicles" });
+        console.error(`❌ Error fetching vehicle ${id}:`, err);
+        res.status(500).json({ error: "Failed to fetch vehicle details and campaigns" });
     }
 });
 
@@ -190,42 +334,42 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
 
 // ✅ Google login/signup
 app.post("/api/auth/google", async (req, res) => {
-    try {
-        const { id_token, username, name, surname, phoneNumber } = req.body;
-        if (!id_token) return res.status(400).json({ message: "Missing ID token" });
+    try {
+        const { id_token, username, name, surname, phoneNumber } = req.body;
+        if (!id_token) return res.status(400).json({ message: "Missing ID token" });
 
-        const ticket = await client.verifyIdToken({
-            idToken: id_token,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
 
-        const google_id = payload.sub;
-        const email = payload.email;
-        const is_verified = 1;
+        const google_id = payload.sub;
+        const email = payload.email;
+        const is_verified = 1;
 
-        let [existing] = await pool.query(
-            "SELECT * FROM users WHERE google_id = ? OR email = ?",
-            [google_id, email]
-        );
+        let [existing] = await pool.query(
+            "SELECT * FROM users WHERE google_id = ? OR email = ?",
+            [google_id, email]
+        );
 
-        // --- 1. HANDLE SIGNUP ---
-        if (existing.length === 0) {
-            await pool.query(
-                `INSERT INTO users 
-                (name, surname, username, email, google_id, phone_number, is_verified) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [name, surname, username, email, google_id, phoneNumber || null, is_verified]
-            );
-            console.log(`🆕 New Google user inserted: ${email}`);
+        // --- 1. HANDLE SIGNUP ---
+        if (existing.length === 0) {
+            await pool.query(
+                `INSERT INTO users 
+                (name, surname, username, email, google_id, phone_number, is_verified) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [name, surname, username, email, google_id, phoneNumber || null, is_verified]
+            );
+            console.log(`🆕 New Google user inserted: ${email}`);
             // Fetch the newly inserted user's data (especially ID and ROLE)
             [existing] = await pool.query(
                 "SELECT * FROM users WHERE email = ?", 
                 [email]
             );
-        } else {
-            console.log(`✅ Google user already exists: ${email}`);
-        }
+        } else {
+            console.log(`✅ Google user already exists: ${email}`);
+        }
 
         const user = existing[0]; // The user object is now ready
 
@@ -239,7 +383,7 @@ app.post("/api/auth/google", async (req, res) => {
         console.log("✅ Google user logged in:", user.email);
 
         // --- 3. SEND RESPONSE WITH JWT ---
-        res.json({ 
+        res.json({ 
             success: true, 
             token, // <-- 🔑 CRITICAL: JWT is now returned
             role: user.role, 
@@ -248,10 +392,10 @@ app.post("/api/auth/google", async (req, res) => {
             surname: user.surname 
         });
 
-    } catch (err) {
-        console.error("❌ Google login error:", err);
-        res.status(500).json({ message: err.message || "Google login failed" });
-    }
+    } catch (err) {
+        console.error("❌ Google login error:", err);
+        res.status(500).json({ message: err.message || "Google login failed" });
+    }
 });
 
 
@@ -306,93 +450,52 @@ app.post("/api/auth/signup", async (req, res) => {
 
 // ✅ Manual Signin (MISSING ROUTE)
 app.post("/api/auth/signin", async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        console.log("🔍 Signin request:", req.body);
-
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password required" });
-        }
-
-        // Check if user exists
-        const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-
-        if (users.length === 0) {
-            return res.status(401).json({ message: "User not found" });
-        }
-
-        const user = users[0];
-
-        // Compare password
-        const match = await bcrypt.compare(password, user.password);
-
-        if (!match) {
-            return res.status(401).json({ message: "Incorrect password" });
-        }
-
-        // Generate JWT token
-        const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role }, // Payload includes email
-            process.env.JWT_SECRET || "supersecretkey",
-            { expiresIn: "1h" }
-        );
-
-        console.log("✅ User logged in:", user.email);
-
-        res.json({
-            success: true,
-            token,
-            role: user.role,
-            email: user.email,
-            name: user.name,
-            surname: user.surname,
-        });
-
-    } catch (err) {
-        console.error("❌ SIGNIN ERROR:", err);
-        res.status(500).json({ message: "Internal server error" });
-    }
-});
-
-
-// ✅ Google login/signup
-app.post("/api/auth/google", async (req, res) => {
     try {
-        const { id_token, username, name, surname, phoneNumber } = req.body;
-        if (!id_token) return res.status(400).json({ message: "Missing ID token" });
+        const { email, password } = req.body;
 
-        const ticket = await client.verifyIdToken({
-            idToken: id_token,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
+        console.log("🔍 Signin request:", req.body);
 
-        const google_id = payload.sub;
-        const email = payload.email;
-        const is_verified = 1;
-
-        const [existing] = await pool.query(
-            "SELECT * FROM users WHERE google_id = ? OR email = ?",
-            [google_id, email]
-        );
-
-        if (existing.length === 0) {
-            await pool.query(
-                `INSERT INTO users 
-                (name, surname, username, email, google_id, phone_number, is_verified) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [name, surname, username, email, google_id, phoneNumber || null, is_verified]
-            );
-            console.log(`🆕 New Google user inserted: ${email}`);
-        } else {
-            console.log(`✅ Google user already exists: ${email}`);
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password required" });
         }
 
-        res.json({ success: true, email, username, name, surname, phoneNumber });
+        // Check if user exists
+        const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+
+        if (users.length === 0) {
+            return res.status(401).json({ message: "User not found" });
+        }
+
+        const user = users[0];
+
+        // Compare password
+        const match = await bcrypt.compare(password, user.password);
+
+        if (!match) {
+            return res.status(401).json({ message: "Incorrect password" });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role }, // Payload includes email
+            process.env.JWT_SECRET || "supersecretkey",
+            { expiresIn: "1h" }
+        );
+
+        console.log("✅ User logged in:", user.email);
+
+        res.json({
+            success: true,
+            token,
+            role: user.role,
+            email: user.email,
+            name: user.name,
+            surname: user.surname,
+        });
+
     } catch (err) {
-        console.error("❌ Google login error:", err);
-        res.status(500).json({ message: err.message || "Google login failed" });
+        console.error("❌ SIGNIN ERROR:", err);
+        res.status(500).json({ message: "Internal server error" });
     }
 });
 
@@ -646,7 +749,8 @@ app.use((req, res) => {
 });
 
 // ✅ Start server
-const PORT = process.env.PORT || 3007;
+// Using process.env.PORT with a default of 3007, as requested.
+const PORT = process.env.PORT || 3007; 
 app.listen(PORT, () => {
     console.log(`✅ Backend running on http://localhost:${PORT}`);
 });

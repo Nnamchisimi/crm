@@ -168,9 +168,12 @@ const cancelCampaign = async (campaign, email) => {
   );
 
   return (
+    
     <Box sx={{ display: "flex", minHeight: "100vh", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white" }}>
+      
       {/* Mobile Hamburger */}
-      <Box sx={{ position: "fixed", top: 10, left: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
+      <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
+        
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
           <MenuIcon />
         </IconButton>
@@ -184,14 +187,21 @@ const cancelCampaign = async (campaign, email) => {
       >
         {drawer}
       </Drawer>
-
+      
       {/* Desktop Sidebar */}
       <Box sx={{ width: 250, background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", p: 3, display: { xs: "none", md: "block" } }}>
         {drawer}
       </Box>
 
       {/* Main content */}
+      
       <Box component="main" sx={{ flexGrow: 1, p: 4, ml: { sm: `${drawerWidth}px` } }}>
+          <Button
+                        onClick={() => navigate("/dashboard")}
+                        sx={{ color: "#00bcd4", mb: 3 }}
+                    >
+                        ← Back to Dashboard
+                    </Button>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Service Campaigns
         </Typography>

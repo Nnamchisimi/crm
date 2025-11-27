@@ -164,7 +164,7 @@ const Newsletter = () => {
         sx={{
           position: "fixed",
           top: 10,
-          left: 10,
+          right: 10,
           display: { xs: "block", md: "none" },
           zIndex: 1200,
         }}
@@ -201,6 +201,13 @@ const Newsletter = () => {
 
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 4 }}>
+               <Button
+                                    onClick={() => navigate("/dashboard")}
+                                    sx={{ color: "#00bcd4", mb: 3 }}
+                                >
+                                    ← Back to Dashboard
+                                </Button>
+
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Discount Newsletter
         </Typography>
