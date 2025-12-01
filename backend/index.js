@@ -61,14 +61,14 @@ app.get("/api/health", (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 🛠️ BOOKING & SERVICE ROUTES (NEW)
+// 🛠️ BOOKING & SERVICE ROUTES (UPDATED FOR QUOTA)
 // -------------------------------------------------------------
 
-// GET /api/service-types - Fetch all available service types
-app.get("/api/service-type", verifyToken, async (req, res) => {
+// ✅ GET /api/servicetype - Fetch all available service types
+app.get("/api/servicetype", verifyToken, async (req, res) => {
     try {
         const [rows] = await pool.query(
-            "SELECT id, name, description, estimated_time, price, type FROM service_types ORDER BY type, name"
+            "SELECT id, label, cost, Icon_name FROM servicetype ORDER BY label"
         );
         res.json(rows);
     } catch (err) {
@@ -77,13 +77,74 @@ app.get("/api/service-type", verifyToken, async (req, res) => {
     }
 });
 
-// POST /api/bookings - Create a new service booking
+// 🛑 UPDATED: GET /api/timeslots - Fetch available time slots for a given date, respecting the quota
+app.get("/api/timeslots", verifyToken, async (req, res) => {
+    const { date } = req.query; // Expected format: 'YYYY-MM-DD'
+
+    if (!date) {
+        return res.status(400).json({ error: "Date parameter is required." });
+    }
+
+    try {
+        const dateObj = new Date(date);
+        const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+
+        // 1. Enforce Weekday Rule (Closed Saturday/Sunday)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return res.json([]); // Return empty array for weekends
+        }
+
+        // 2. Get the COUNT of booked appointments for EACH time slot on the given date
+        const [bookedCounts] = await pool.query(
+            `SELECT 
+                TIME_FORMAT(appointment_date, '%H:%i') AS slot_time, 
+                COUNT(*) AS booked_count
+            FROM bookings 
+            WHERE DATE(appointment_date) = ?
+            GROUP BY slot_time`,
+            [date]
+        );
+        
+        // Convert bookedCounts array to a Map for O(1) lookup
+        const bookedMap = new Map(bookedCounts.map(row => [row.slot_time, row.booked_count]));
+
+        // 3. Get ALL possible slots and their QUOTA from the time_slots table
+        // 🛑 CRITICAL CHANGE: Query the `quota` column from the database
+        const [allSlotsRows] = await pool.query(
+            "SELECT TIME_FORMAT(start_time, '%H:%i') AS slot_time, quota FROM time_slots ORDER BY start_time"
+        );
+
+        // 4. Determine availability (quota logic)
+        const allSlotsWithAvailability = allSlotsRows.map(row => {
+            const slotTime = row.slot_time;
+            const slotQuota = row.quota || 20; // Use DB quota, fallback to 20 if needed
+            const bookedCount = bookedMap.get(slotTime) || 0;
+            
+            const remainingQuota = slotQuota - bookedCount;
+
+            return {
+                slot_time: slotTime,
+                is_available: remainingQuota > 0,
+                remaining_quota: remainingQuota, 
+            };
+        });
+
+        // Return the structured data containing availability and remaining quota
+        res.json(allSlotsWithAvailability);
+    } catch (err) {
+        console.error("Error fetching time slots:", err);
+        res.status(500).json({ error: "Failed to fetch time slots." });
+    }
+});
+
+
+// 🛑 UPDATED: POST /api/bookings - Create a new service booking with quota check
 app.post("/api/bookings", verifyToken, async (req, res) => {
     const {
         vehicle_id,
         service_type_id,
-        booking_date,
-        booking_time,
+        appointment_date_str, // YYYY-MM-DD
+        appointment_time_str, // HH:MM
         notes,
         campaign_id
     } = req.body;
@@ -91,7 +152,7 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
     const userEmail = req.user.email; // From JWT
 
     // Basic validation
-    if (!vehicle_id || !service_type_id || !booking_date || !booking_time) {
+    if (!vehicle_id || !service_type_id || !appointment_date_str || !appointment_time_str) {
         return res.status(400).json({ message: "Missing required booking fields" });
     }
 
@@ -105,40 +166,61 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
         if (vehicleRows.length === 0) {
             return res.status(404).json({ message: "Vehicle not found or unauthorized" });
         }
-
-        const vin = vehicleRows[0].vin;
-        const fullDateTime = `${booking_date} ${booking_time}`;
-
-        // 2. Insert the new booking
-        const sql = `
-            INSERT INTO service_bookings
-            (user_email, vehicle_id, vin, service_type_id, booking_date_time, notes, campaign_id, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')
-        `;
-
-        const [result] = await pool.execute(sql, [
-            userEmail,
-            vehicle_id,
-            vin,
-            service_type_id,
-            fullDateTime,
-            notes || null,
-            campaign_id || null // Can be NULL if no campaign is applied
-        ]);
         
-        // 3. (Optional) If a campaign was used, update the user_campaigns status/link if needed
+        // COMBINE DATE AND TIME for booking insertion
+        const finalAppointmentDateTime = `${appointment_date_str} ${appointment_time_str}:00`;
+        const timeOnly = appointment_time_str; // HH:MM
+
+        // 🚨 2. CRITICAL CHECK: ENSURE SLOT IS STILL AVAILABLE AGAINST QUOTA
+        // Use a single query to get the quota and the current booking count
+        const [quotaCheck] = await pool.query(
+            `SELECT 
+                ts.quota, 
+                (SELECT COUNT(*) FROM bookings WHERE DATE(appointment_date) = ? AND TIME_FORMAT(appointment_date, '%H:%i') = ?) AS current_bookings
+            FROM time_slots ts 
+            WHERE TIME_FORMAT(ts.start_time, '%H:%i') = ?`,
+            [appointment_date_str, timeOnly, timeOnly]
+        );
+
+        if (quotaCheck.length === 0) {
+            return res.status(404).json({ message: "Selected time slot configuration not found." });
+        }
+
+        const { quota, current_bookings } = quotaCheck[0];
+
+        if (current_bookings >= quota) {
+            // This slot was taken or is full based on the quota.
+            return res.status(409).json({ 
+                message: "The selected time slot is now full. Please select another time." 
+            });
+        }
+        
+        // 3. Insert the new booking
+        const updatedSql = `
+            INSERT INTO bookings
+            (customer_email, service_id, appointment_date, status, notes, campaign_id, booking_date)
+            VALUES (?, ?, ?, 'Scheduled', ?, ?, NOW())
+        `;
+        
+        const [updatedResult] = await pool.execute(updatedSql, [
+            userEmail,
+            service_type_id,
+            finalAppointmentDateTime,
+            notes || null,
+            campaign_id || null
+        ]);
+
+        // 4. (Optional) If a campaign was used, update the user_campaigns status/link if needed
         if (campaign_id) {
-            // A simple approach: mark the campaign as 'used' for the user
             await pool.execute(
                 "UPDATE user_campaigns SET status = 'used', service_booking_id = ? WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
-                [result.insertId, campaign_id, userEmail]
+                [updatedResult.insertId, campaign_id, userEmail]
             );
         }
 
-
         res.status(201).json({
             message: "Service booking created successfully!",
-            bookingId: result.insertId
+            bookingId: updatedResult.insertId
         });
     } catch (error) {
         console.error("❌ Booking insert error:", error);
@@ -148,10 +230,8 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
     }
 });
 
-// -------------------------------------------------------------
-// 🚗 VEHICLE ROUTES (MODIFIED FOR USER FILTERING)
-// -------------------------------------------------------------
 
+// 🚗 VEHICLE ROUTES (MODIFIED FOR USER FILTERING)
 // GET /api/vehicles - list vehicles for the logged-in user
 app.get("/api/vehicles", verifyToken, async (req, res) => {
     // The user's email is available on req.user after verifyToken middleware runs
@@ -169,7 +249,7 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
     }
 });
 
-// Fixed Code for GET /api/vehicles/:id
+
 // FIXED Code for GET /api/vehicles/:id
 app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
     // 1. Get the URL parameter ID and the authenticated user's email
@@ -448,7 +528,7 @@ app.post("/api/auth/signup", async (req, res) => {
 });
 
 
-// ✅ Manual Signin (MISSING ROUTE)
+// ✅ Manual Signin
 app.post("/api/auth/signin", async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -629,7 +709,6 @@ app.get("/api/campaigns", async (req, res) => {
 });
 
 
-
 app.post("/api/campaigns/:id/book", async (req, res) => {
     const { email } = req.body;
     const { id } = req.params;
@@ -685,8 +764,6 @@ app.post("/api/campaigns/:id/cancel", async (req, res) => {
         res.status(500).json({ message: "Server error cancelling campaign" });
     }
 });
-
-
 
 
 // ✅ Add Campaign
