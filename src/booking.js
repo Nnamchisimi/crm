@@ -656,7 +656,7 @@ const BookService = () => {
     return (
         <Box sx={{ p: 4, background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white", minHeight: "100vh" }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-                Book Service Appointment 🚗
+                Book Service Appointment 
             </Typography>
             <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 4 }}>
                 Follow the steps to select your vehicle, service, and appointment time.

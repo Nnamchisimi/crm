@@ -23,6 +23,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EmailIcon from "@mui/icons-material/Email";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 const drawerWidth = 240;
 
@@ -134,6 +135,7 @@ const cancelCampaign = async (campaign, email) => {
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
     { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+     { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
   ];
 
   const drawer = (

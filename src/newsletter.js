@@ -25,6 +25,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 const Newsletter = () => {
   const navigate = useNavigate();
@@ -114,6 +115,7 @@ const Newsletter = () => {
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
     { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+     { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
   ];
 
   const drawer = (
