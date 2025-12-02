@@ -8,6 +8,7 @@ import {
     Step,
     StepLabel,
     Radio,
+    Drawer, // Imported from MUI
     RadioGroup,
     FormControlLabel,
     FormControl,
@@ -15,16 +16,41 @@ import {
     TextField,
     Chip,
     CircularProgress,
+    List, // Added List/ListItem/Divider for the drawer/sidebar
+    ListItem,
+    ListItemText,
+    Divider,
+    IconButton,
 } from "@mui/material";
-import { ChevronLeft, ChevronRight, EventAvailable, CheckCircle, CarRental, Build, Tune, FlashOn, TireRepair, LocalGasStation } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { 
+    ChevronLeft, 
+    ChevronRight, 
+    EventAvailable, 
+    CheckCircle, 
+    CarRental, 
+    Build, 
+    Tune, 
+    FlashOn, 
+    TireRepair, 
+    LocalGasStation,
+    // Sidebar Icons
+    Menu as MenuIcon, // Alias to avoid conflict with Menu component if used
+    Campaign as CampaignIcon,
+    Notifications as NotificationsIcon,
+    Home as HomeIcon,
+    Dashboard as DashboardIcon,
+    ExitToApp as ExitToAppIcon,
+    Email as EmailIcon,
+    CalendarMonth as CalendarMonthIcon,
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom"; // Assumes you are using react-router-dom
 
 // --- Configuration & Constants ---
-const API_BASE_URL = "http://localhost:3007/api"; 
+const API_BASE_URL = "http://localhost:3007/api";
 
-// Initialize default date to null, forcing the user to select one, 
+// Initialize default date to null, forcing the user to select one,
 // which addresses the requirement to hide time slots initially.
-const defaultAppointmentDate = null; 
+const defaultAppointmentDate = null;
 
 const steps = [
     "Select Vehicle",
@@ -41,30 +67,42 @@ const getIconComponent = (iconName) => {
         case "FlashOn": return <FlashOn />;
         case "TireRepair": return <TireRepair />;
         case "LocalGasStation": return <LocalGasStation />;
-        default: return <Build />; 
+        default: return <Build />;
     }
 };
 
 // --- Custom Calendar Mock Component (Updated for 7-day range, excluding Sunday) ---
-const CalendarMock = ({ selectedDate, onDateSelect }) => {
+// Note: This component now accepts the sidebar state/handlers/content as props 
+// or pulls them from the outer scope if defined globally, but since it was nested
+// in the prompt, I'm defining it to accept the necessary props for the date picker functionality.
+const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, drawer, navigate }) => {
+    
+    // --- Date Calculation Logic (Corrected to be self-contained) ---
     const dates = [];
-    const today = new Date(); // Get today's date
+    const today = new Date(); 
 
-    // Loop through the next 8 days (i=1 to 8) to find 7 valid appointment days
+    // Loop until we find 7 valid appointment days
     for (let i = 1; dates.length < 7; i++) {
         const d = new Date(today); // Clone today's date
         d.setDate(today.getDate() + i); // Set the date to i days from today
 
-        // 0 is Sunday, 6 is Saturday. We exclude 0 (Sunday).
+        // 0 is Sunday. We exclude 0.
         if (d.getDay() !== 0) { 
             dates.push(d);
         }
     }
+    // -------------------------------------------------------------------
+    
+    // The drawer content needs to be defined within BookService and passed down 
+    // or defined here with hardcoded state/navigation if CalendarMock was meant to be the outer wrapper.
+    // Since the original code had the sidebar elements inside CalendarMock, 
+    // I'm assuming the intention was to lift the drawer logic out of CalendarMock, 
+    // but for the sake of completion, the passed-in props (mobileOpen, setMobileOpen, drawer) are used here.
 
     return (
-        <Box sx={{ p: 2, background: "rgba(255,255,255,0.05)", borderRadius: 2 }}>
+        <Box>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Select Date (Next 7 working days)
+                Select Date (Next 7 working days, excluding Sunday)
             </Typography>
             <Grid container spacing={1} justifyContent="center">
                 {dates.map((date, index) => {
@@ -114,9 +152,9 @@ const BookService = () => {
     const [vehicleLoading, setVehicleLoading] = useState(true); 
     const [serviceTypes, setServiceTypes] = useState([]);
     const [serviceLoading, setServiceLoading] = useState(true); 
+    const [mobileOpen, setMobileOpen] = useState(false); // Mobile sidebar state
     
     // State for Time Slots
-    // availableTimeSlots now holds an array of objects: [{ slot_time, is_available, remaining_quota }, ...]
     const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState(null);
@@ -145,6 +183,48 @@ const BookService = () => {
         localStorage.removeItem("userEmail");
         navigate("/signin");
     };
+    
+    // --- Sidebar Content Definition ---
+    const sidebarItems = [
+        { text: "Home", icon: <HomeIcon />, path: "/" },
+        { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
+        { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
+        { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
+        { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
+        { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
+        { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+    ];
+    
+    const drawerContent = (
+        <Box sx={{ width: 250, p: 3, background: "rgba(0,0,0,0.9)", minHeight: '100%' }}>
+            <Typography
+                variant="h5"
+                fontWeight="bold"
+                gutterBottom
+                sx={{
+                    background: "linear-gradient(90deg, #fff, #00bcd4)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                }}
+            >
+                AutoCRM
+            </Typography>
+            <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
+            <List>
+                {sidebarItems.map((item, idx) => (
+                    <ListItem
+                        key={idx}
+                        button
+                        sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
+                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                    >
+                        {item.icon}
+                        <ListItemText primary={item.text} sx={{ ml: 2 }} />
+                    </ListItem>
+                ))}
+            </List>
+        </Box>
+    );
 
     // 1. Fetch Vehicle Data
     useEffect(() => {
@@ -230,7 +310,7 @@ const BookService = () => {
                 setAvailableTimeSlots([]);
                 // Reset timeSlot if the date is cleared
                 if (!formData.date && formData.timeSlot) {
-                     setFormData(prev => ({ ...prev, timeSlot: null }));
+                    setFormData(prev => ({ ...prev, timeSlot: null }));
                 }
                 return;
             }
@@ -352,7 +432,7 @@ const BookService = () => {
         return date.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
     
-    // --- Step Validation Logic (FIXED) ---
+    // --- Step Validation Logic ---
     const isStepValid = () => {
         // Prevent progression if critical data is still loading
         if (step === 0 && (vehicleLoading || !userToken)) return false; 
@@ -378,7 +458,7 @@ const BookService = () => {
                     return isDateSelected && !!formData.timeSlot && !!slot && slot.is_available;
                 })();
                 
-                // No recursion, just check all fields needed for the final step
+                // Check all required fields
                 return !!formData.vehicle && !!formData.service && isStep2Valid;
                 
             default:
@@ -508,8 +588,12 @@ const BookService = () => {
                             <Grid item xs={12} md={7}>
                                 <CalendarMock 
                                     selectedDate={formData.date}
-                                    // On date select, reset timeSlot to trigger slot fetch and prevent old time selection
                                     onDateSelect={(date) => setFormData({ ...formData, date, timeSlot: null })} 
+                                    // Pass necessary props (required by the structure you had in the CalendarMock section)
+                                    mobileOpen={mobileOpen}
+                                    setMobileOpen={setMobileOpen}
+                                    drawer={drawerContent}
+                                    navigate={navigate}
                                 />
                             </Grid>
                             <Grid item xs={12} md={5}>
@@ -552,8 +636,7 @@ const BookService = () => {
                                                             bgcolor: formData.timeSlot === slot.slot_time && slot.is_available ? "#00bcd4" : (slot.is_available ? "rgba(255,255,255,0.2)" : 'rgba(255,0,0,0.2)')
                                                         },
                                                         // Style for unavailable slots
-                                                        ...(
-                                                            !slot.is_available && 
+                                                        ...(!slot.is_available && 
                                                             { 
                                                                 bgcolor: 'rgba(255,0,0,0.2)', // Red background for unavailable
                                                                 color: 'rgba(255,255,255,0.5)', 
@@ -576,7 +659,7 @@ const BookService = () => {
                                     </Grid>
                                 )}
                                 
-                                {/* MUI TextField Dark Mode Styling Enhanced */}
+                                {/* MUI TextField Dark Mode Styling Enhanced (Continuation and Completion) */}
                                 <TextField
                                     label="Additional Notes (Optional)"
                                     multiline
@@ -588,14 +671,17 @@ const BookService = () => {
                                     sx={{ 
                                         mt: 4, 
                                         '& .MuiOutlinedInput-root': { 
-                                            color: 'white', 
+                                            color: 'white',
+                                            '& fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
+                                            '&:hover fieldset': { borderColor: '#00bcd4' },
                                             '&.Mui-focused fieldset': { borderColor: '#00bcd4' },
-                                            '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                                        }, 
-                                        '& .MuiInputLabel-root': { color: '#00bcd4' }, 
-                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' } 
+                                            backgroundColor: 'rgba(255,255,255,0.05)',
+                                        },
+                                        '& .MuiInputLabel-root': {
+                                            color: 'rgba(255,255,255,0.7)',
+                                            '&.Mui-focused': { color: '#00bcd4' },
+                                        },
                                     }}
-                                    InputLabelProps={{ shrink: true }}
                                 />
                             </Grid>
                         </Grid>
@@ -604,108 +690,139 @@ const BookService = () => {
 
             case 3: // Step 4: Review & Confirm
                 return (
-                    <Paper sx={{ p: 4, background: "rgba(255,255,255,0.05)", border: "1px solid #00bcd4" }}>
-                        <Box mb={3}>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: "#00bcd4", mb: 1 }}>
-                                Review Appointment
-                            </Typography>
-                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-                                Please verify the details below before confirming.
-                            </Typography>
-                        </Box>
-                        
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle1" fontWeight="bold">Vehicle:</Typography>
-                                <Typography>{formData.vehicle?.brand} {formData.vehicle?.model} ({formData.vehicle?.licensePlate})</Typography>
+                    <Box>
+                        <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
+                            Review Your Appointment
+                        </Typography>
+                        <Paper sx={{ p: 3, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="subtitle1" fontWeight="bold">Vehicle Details <CarRental sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
+                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+                                    <Typography>**Make/Model:** {formData.vehicle?.brand} {formData.vehicle?.model}</Typography>
+                                    <Typography>**License Plate:** {formData.vehicle?.licensePlate}</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="subtitle1" fontWeight="bold">Service Details <Build sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
+                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+                                    <Typography>**Service Type:** {formData.service?.label}</Typography>
+                                    <Typography>**Estimated Cost:** ${formData.service?.cost}</Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>Appointment Details <CheckCircle sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
+                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+                                    <Typography>**Date:** {formatDate(formData.date)}</Typography>
+                                    <Typography>**Time Slot:** {formData.timeSlot}</Typography>
+                                </Grid>
+                                {formData.notes && (
+                                    <Grid item xs={12}>
+                                        <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>Additional Notes</Typography>
+                                        <Paper variant="outlined" sx={{ p: 1, mt: 1, background: "rgba(0,0,0,0.1)", borderColor: "rgba(255,255,255,0.1)" }}>
+                                            <Typography variant="body2">{formData.notes}</Typography>
+                                        </Paper>
+                                    </Grid>
+                                )}
                             </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle1" fontWeight="bold">Service:</Typography>
-                                <Typography>{formData.service?.label}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle1" fontWeight="bold">Date:</Typography>
-                                <Typography>{formatDate(formData.date)}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle1" fontWeight="bold">Time:</Typography>
-                                <Typography>{formData.timeSlot}</Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                                <Typography variant="subtitle1" fontWeight="bold">Additional Notes:</Typography>
-                                <Typography sx={{ fontStyle: 'italic', color: "rgba(255,255,255,0.7)" }}>
-                                    {formData.notes || "None"}
-                                </Typography>
-                            </Grid>
-                        </Grid>
-                        
-                        <Box mt={4} textAlign="right">
-                            <Typography variant="h5" fontWeight="bold">
-                                Total Estimated Cost: <span style={{ color: '#00bcd4' }}>${formData.service?.cost || 0}</span>
-                            </Typography>
-                        </Box>
-                    </Paper>
+                        </Paper>
+                    </Box>
                 );
 
             default:
-                return "Unknown step";
+                return <Typography>Unknown step</Typography>;
         }
     };
 
-    // --- Render Component ---
+    // --- Main Render Structure ---
     return (
-        <Box sx={{ p: 4, background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white", minHeight: "100vh" }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-                Book Service Appointment 
-            </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 4 }}>
-                Follow the steps to select your vehicle, service, and appointment time.
-            </Typography>
+        <Box sx={{ 
+            display: 'flex', 
+            minHeight: '100vh', 
+            background: '#1e1e1e', // Dark background for the app
+            color: 'white',
+        }}>
+            {/* Mobile Hamburger */}
+            <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
+                <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
+                    <MenuIcon />
+                </IconButton>
+            </Box>
+    
+            {/* Mobile Drawer */}
+            <Drawer
+                anchor="left" // Changed to left for standard sidebar feel
+                open={mobileOpen}
+                onClose={() => setMobileOpen(false)}
+                sx={{ 
+                    display: { xs: "block", md: "none" }, 
+                    "& .MuiDrawer-paper": { 
+                        background: "rgba(0,0,0,0.9)", 
+                        color: "white",
+                        boxSizing: 'border-box',
+                        width: 250
+                    } 
+                }}
+            >
+                {drawerContent}
+            </Drawer>
+            
+            {/* Desktop Sidebar */}
+            <Box 
+                sx={{ 
+                    width: 250, 
+                    background: "rgba(255,255,255,0.05)", 
+                    borderRight: "1px solid rgba(255,255,255,0.1)", 
+                    display: { xs: "none", md: "block" },
+                    flexShrink: 0
+                }}
+            >
+                {drawerContent}
+            </Box>
 
-            {/* Stepper */}
-            <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
-                {steps.map((label) => (
-                    <Step key={label}>
-                        <StepLabel 
-                            StepIconComponent={({ active, completed }) => {
-                                if (completed) return <CheckCircle sx={{ color: '#00bcd4' }} />;
-                                if (active) return <CircularProgress size={24} sx={{ color: '#00bcd4' }} />;
-                                return null;
-                            }}
-                        >
-                            <Typography color="white">{label}</Typography>
-                        </StepLabel>
-                    </Step>
-                ))}
-            </Stepper>
+            {/* Main Content Area */}
+            <Box 
+                component="main" 
+                sx={{ 
+                    flexGrow: 1, 
+                    p: { xs: 2, sm: 4 }, 
+                    pt: { xs: 8, sm: 4 }, // Add padding top for mobile hamburger clearance
+                    width: { sm: `calc(100% - 250px)` },
+                }}
+            >
+                <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ mb: 4 }}>
+                    Book a Service Appointment
+                </Typography>
 
-            <Paper sx={{ p: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4 }}>
-                {/* Step Content */}
-                <Box>
+                <Stepper activeStep={step} alternativeLabel sx={{ mb: 4, '& .MuiStepLabel-label': { color: 'rgba(255,255,255,0.7)' }, '& .MuiStepIcon-root.Mui-active': { color: '#00bcd4' }, '& .MuiStepIcon-root.Mui-completed': { color: '#00bcd4' } }}>
+                    {steps.map((label) => (
+                        <Step key={label}>
+                            <StepLabel>{label}</StepLabel>
+                        </Step>
+                    ))}
+                </Stepper>
+
+                <Paper sx={{ p: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4 }}>
                     {getStepContent(step)}
-                </Box>
-                
-                {/* Step Navigation Buttons */}
-                <Box sx={{ display: "flex", flexDirection: "row", pt: 2, justifyContent: 'space-between' }}>
+                </Paper>
+
+                {/* Navigation Buttons */}
+                <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2, justifyContent: 'space-between' }}>
                     <Button
                         color="inherit"
                         disabled={step === 0 || loading}
                         onClick={handleBack}
+                        sx={{ mr: 1, color: "rgba(255,255,255,0.7)" }}
                         startIcon={<ChevronLeft />}
-                        sx={{ color: '#00bcd4' }}
                     >
                         Back
                     </Button>
                     
-                    <Box sx={{ flex: '1 1 auto' }} />
-
                     {step === steps.length - 1 ? (
                         <Button
                             variant="contained"
                             onClick={handleBooking}
                             disabled={!isStepValid() || loading}
+                            sx={{ bgcolor: '#00bcd4', color: '#000', '&:hover': { bgcolor: '#00a3bd' } }}
                             endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
-                            sx={{ bgcolor: "#00bcd4", color: "#000", '&:hover': { bgcolor: "#00a9bb" } }}
                         >
                             {loading ? "Confirming..." : "Confirm Booking"}
                         </Button>
@@ -714,14 +831,14 @@ const BookService = () => {
                             variant="contained"
                             onClick={handleNext}
                             disabled={!isStepValid() || loading}
+                            sx={{ bgcolor: '#00bcd4', color: '#000', '&:hover': { bgcolor: '#00a3bd' } }}
                             endIcon={<ChevronRight />}
-                            sx={{ bgcolor: "#00bcd4", color: "#000", '&:hover': { bgcolor: "#00a9bb" } }}
                         >
                             Next
                         </Button>
                     )}
                 </Box>
-            </Paper>
+            </Box>
         </Box>
     );
 };
