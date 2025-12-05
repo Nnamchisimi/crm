@@ -730,10 +730,21 @@ const BookService = () => {
     };
 
     // --- Main Render ---
-    return (
-        <Box sx={{ p: 3, background: "#121212", minHeight: "100vh", color: "white" }}>
-            {/* Header with Menu Icon for Mobile */}
+// --- Main Render ---
+return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#121212', color: 'white' }}>
+
+        {/* Desktop Sidebar */}
+        <Box sx={{ width: 250, display: { xs: 'none', md: 'block' } }}>
+            {drawerContent}
+        </Box>
+
+        {/* Main Content */}
+        <Box sx={{ flexGrow: 1, p: 3 }}>
+
+            {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                {/* Mobile menu button */}
                 <IconButton
                     color="inherit"
                     aria-label="open drawer"
@@ -743,6 +754,7 @@ const BookService = () => {
                 >
                     <MenuIcon />
                 </IconButton>
+
                 <Typography variant="h4" fontWeight="bold" sx={{
                     background: "linear-gradient(90deg, #fff, #00bcd4)",
                     WebkitBackgroundClip: "text",
@@ -751,7 +763,7 @@ const BookService = () => {
                 }}>
                     Book Your Service Appointment
                 </Typography>
-                {/* User Email Display */}
+
                 {userEmail && (
                     <Chip 
                         label={userEmail} 
@@ -761,19 +773,17 @@ const BookService = () => {
                 )}
             </Box>
 
-            {/* Mobile Drawer/Sidebar */}
+            {/* Mobile Drawer */}
             <Drawer
                 variant="temporary"
                 open={mobileOpen}
                 onClose={() => setMobileOpen(false)}
-                ModalProps={{
-                    keepMounted: true, // Better open performance on mobile.
-                }}
+                ModalProps={{ keepMounted: true }}
             >
                 {drawerContent}
             </Drawer>
-            
-            {/* Main Content */}
+
+            {/* Stepper + Booking Paper */}
             <Paper 
                 elevation={6} 
                 sx={{ 
@@ -802,7 +812,7 @@ const BookService = () => {
                     {getStepContent(step)}
                 </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "row", pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)', mt: 3, pt: 3 }}>
+                <Box sx={{ display: "flex", flexDirection: "row", pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)', mt: 3 }}>
                     <Button
                         color="inherit"
                         disabled={step === 0 || loading}
@@ -830,7 +840,8 @@ const BookService = () => {
                 </Box>
             </Paper>
         </Box>
-    );
+    </Box>
+);
 };
 
 export default BookService;

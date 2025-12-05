@@ -5,6 +5,7 @@ import {
   Paper,
   Tabs,
   Tab,
+  Chip,
   List,
   ListItem,
   ListItemText,
@@ -22,6 +23,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications"; // Added
 import ExitToAppIcon from "@mui/icons-material/ExitToApp"; // Added
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom"; // Added
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 // Define the common sidebar items outside the component
 const sidebarItems = [
@@ -30,6 +32,7 @@ const sidebarItems = [
   { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
   { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
   { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
+  { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
   { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
 ];
 
@@ -182,6 +185,17 @@ const NotificationsPage = () => {
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Notifications
         </Typography>
+              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                <Chip
+                                  label={userEmail}
+                                  variant="outlined"
+                                  sx={{
+                                    width: "200px",
+                                    color: "#00bcd4",
+                                    borderColor: "#00bcd4",
+                                  }}
+                                />
+                              </Box>
         <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
           Stay updated with your vehicle maintenance, service alerts, and newsletters.
         </Typography>

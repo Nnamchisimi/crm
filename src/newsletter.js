@@ -4,6 +4,7 @@ import {
   Typography,
   Paper,
   TextField,
+  Chip,
   Button,
   FormGroup,
   FormControlLabel,
@@ -31,8 +32,10 @@ const Newsletter = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+
   // Get logged-in user's email from localStorage
   const loggedInEmail = localStorage.getItem("userEmail") || "";
+
 
   // Form state (email is not editable)
   const [formData, setFormData] = useState({
@@ -201,6 +204,7 @@ const Newsletter = () => {
         {drawer}
       </Box>
 
+
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 4 }}>
                <Button
@@ -209,7 +213,18 @@ const Newsletter = () => {
                                 >
                                     ← Back to Dashboard
                                 </Button>
-
+            
+                 <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Chip
+                          label={loggedInEmail}
+                          variant="outlined"
+                          sx={{
+                            width: "200px",
+                            color: "#00bcd4",
+                            borderColor: "#00bcd4",
+                          }}
+                        />
+                      </Box>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Discount Newsletter
         </Typography>
