@@ -245,12 +245,25 @@ const getClosestDateCount = () => {
 
       {/* Main Content */}
       <Box sx={{ flexGrow: 1, p: 4 }}>
+      
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Dashboard
         </Typography>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Chip
+              label={userEmail}
+              variant="outlined"
+              sx={{
+                width: "200px",
+                color: "#00bcd4",
+                borderColor: "#00bcd4",
+              }}
+            />
+          </Box>
         <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
           Manage your vehicles and track maintenance schedules
         </Typography>
+        
 
         {/* Stats */}
         <Grid container spacing={3}>

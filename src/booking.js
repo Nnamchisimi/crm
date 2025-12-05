@@ -492,6 +492,8 @@ const BookService = () => {
                                             onClick={() => setFormData({ ...formData, vehicle })}
                                             sx={{
                                                 p: 3,
+                                                 width: 300,
+                                                 height: 190,
                                                 borderRadius: 3,
                                                 background: formData.vehicle?.id === vehicle.id 
                                                     ? "rgba(0,188,212,0.2)"
@@ -503,7 +505,7 @@ const BookService = () => {
                                         >
                                             <CarRental sx={{ float: 'right', color: '#00bcd4' }} />
                                             <Typography variant="h6" fontWeight="bold">{vehicle.brand} {vehicle.model}</Typography>
-                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>License: **{vehicle.license_plate}**</Typography>
+                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>License: {vehicle.license_plate}</Typography>
                                             <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>VIN: {vehicle.vin}</Typography>
                                             <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>CRM Number: {vehicle.crm_number || "---"}</Typography>
                                         </Paper>
@@ -541,6 +543,8 @@ const BookService = () => {
                                                 sx={{
                                                     p: 2,
                                                     borderRadius: 3,
+                                                     width: 190,
+                                                      height: 150,
                                                     background: formData.service?.id === service.id ? "rgba(0,188,212,0.2)" : "rgba(255,255,255,0.05)",
                                                     border: `2px solid ${formData.service?.id === service.id ? "#00bcd4" : "rgba(255,255,255,0.1)"}`,
                                                     "&:hover": { background: "rgba(255,255,255,0.1)", cursor: "pointer" },
@@ -559,7 +563,7 @@ const BookService = () => {
                                                                 {service.label}
                                                             </Typography>
                                                             <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
-                                                                Cost: **${service.cost}**
+                                                                Cost: ${service.cost}
                                                             </Typography>
                                                         </Box>
                                                     }

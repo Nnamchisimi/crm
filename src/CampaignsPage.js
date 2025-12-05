@@ -204,6 +204,18 @@ const cancelCampaign = async (campaign, email) => {
                     >
                         ← Back to Dashboard
                     </Button>
+
+                  <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                      <Chip
+                        label={userEmail}
+                        variant="outlined"
+                        sx={{
+                          width: "200px",
+                          color: "#00bcd4",
+                          borderColor: "#00bcd4",
+                        }}
+                      />
+                   </Box>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Service Campaigns
         </Typography>
@@ -218,7 +230,7 @@ const cancelCampaign = async (campaign, email) => {
           {activeCampaigns.map(c => (
             <Grid item xs={12} md={6} key={c.id}>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
+                <Paper sx={{ p: 3,  width: 360,  height: 190,  borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                     <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
                     <Chip label={c.priority} sx={{ bgcolor: getPriorityColor(c.priority), color: "white" }} />
@@ -243,7 +255,7 @@ const cancelCampaign = async (campaign, email) => {
           {allCampaigns.map(c => (
             <Grid item xs={12} md={6} key={c.id}>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
+                <Paper sx={{ p: 3, width: 360, height: 190, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                     <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
                     <Chip label={c.priority} sx={{ bgcolor: getPriorityColor(c.priority), color: "white" }} />
