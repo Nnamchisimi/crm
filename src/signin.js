@@ -40,6 +40,9 @@ const handleSignIn = async (e) => {
     localStorage.setItem("userEmail", data.email);
     localStorage.setItem("role", data.role);
     localStorage.setItem("token", data.token);
+    localStorage.setItem("userName", data.name);
+    localStorage.setItem("userSurname", data.surname);
+    
 
     if (data.role === "admin") navigate("/admin");
     else navigate("/dashboard");

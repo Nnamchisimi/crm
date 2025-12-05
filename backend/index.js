@@ -11,22 +11,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ MySQL connection pool
+// -------------------------------------------------------------
+// ⚙️ DATABASE AND AUTH CLIENT SETUP
+// -------------------------------------------------------------
+
 const pool = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASS || "123456789",
-    database: process.env.DB_NAME || "crm",
+    database: process.env.DB_NAME || "CRM",
 });
 
-// ✅ Google OAuth client
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+
 // -------------------------------------------------------------
-// 🔐 AUTHENTICATION MIDDLEWARE
+// 🔒 MIDDLEWARE: verifyToken
 // -------------------------------------------------------------
 
-// Middleware to verify JWT and attach user info to req
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -34,11 +36,11 @@ const verifyToken = (req, res, next) => {
         return res.status(401).json({ message: "No token provided, access denied" });
     }
 
-    const token = authHeader.split(" ")[1]; // Expects 'Bearer <token>'
+    const token = authHeader.split(" ")[1];
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey");
-        req.user = decoded; // Attach the decoded user payload (id, email, role) to the request
+        req.user = decoded;
         next();
     } catch (err) {
         console.error("JWT verification error:", err);
@@ -46,25 +48,25 @@ const verifyToken = (req, res, next) => {
     }
 };
 
+
 // -------------------------------------------------------------
-// ⚙️ GENERAL ROUTES
+// 🏠 BASIC ROUTES
 // -------------------------------------------------------------
 
-// ✅ Root route
 app.get("/", (req, res) => {
-    res.send("✅ Backend is running!");
+    res.send("Backend is running!");
 });
 
-// ✅ Health check
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date() });
 });
 
+
 // -------------------------------------------------------------
-// 🛠️ BOOKING & SERVICE ROUTES (UPDATED FOR QUOTA)
+// 🛠️ SERVICE ROUTES
 // -------------------------------------------------------------
 
-// ✅ GET /api/servicetype - Fetch all available service types
+// GET /api/servicetype
 app.get("/api/servicetype", verifyToken, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -77,7 +79,7 @@ app.get("/api/servicetype", verifyToken, async (req, res) => {
     }
 });
 
-// 🛑 UPDATED: GET /api/timeslots - Fetch available time slots for a given date, respecting the quota
+// GET /api/timeslots - Fetch available time slots for a given date, respecting the quota
 app.get("/api/timeslots", verifyToken, async (req, res) => {
     const { date } = req.query; // Expected format: 'YYYY-MM-DD'
 
@@ -109,7 +111,6 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
         const bookedMap = new Map(bookedCounts.map(row => [row.slot_time, row.booked_count]));
 
         // 3. Get ALL possible slots and their QUOTA from the time_slots table
-        // 🛑 CRITICAL CHANGE: Query the `quota` column from the database
         const [allSlotsRows] = await pool.query(
             "SELECT TIME_FORMAT(start_time, '%H:%i') AS slot_time, quota FROM time_slots ORDER BY start_time"
         );
@@ -138,111 +139,20 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
 });
 
 
-// 🛑 UPDATED: POST /api/bookings - Create a new service booking with quota check
-app.post("/api/bookings", verifyToken, async (req, res) => {
-    const {
-        vehicle_id,
-        service_type_id,
-        appointment_date_str, // YYYY-MM-DD
-        appointment_time_str, // HH:MM
-        notes,
-        campaign_id
-    } = req.body;
+// -------------------------------------------------------------
+// 🚗 VEHICLE ROUTES
+// -------------------------------------------------------------
 
-    const userEmail = req.user.email; // From JWT
-
-    // Basic validation
-    if (!vehicle_id || !service_type_id || !appointment_date_str || !appointment_time_str) {
-        return res.status(400).json({ message: "Missing required booking fields" });
-    }
-
-    try {
-        // 1. Get vehicle details to verify ownership and grab VIN
-        const [vehicleRows] = await pool.query(
-            "SELECT vin FROM vehicles WHERE id = ? AND email = ?",
-            [vehicle_id, userEmail]
-        );
-
-        if (vehicleRows.length === 0) {
-            return res.status(404).json({ message: "Vehicle not found or unauthorized" });
-        }
-        
-        // COMBINE DATE AND TIME for booking insertion
-        const finalAppointmentDateTime = `${appointment_date_str} ${appointment_time_str}:00`;
-        const timeOnly = appointment_time_str; // HH:MM
-
-        // 🚨 2. CRITICAL CHECK: ENSURE SLOT IS STILL AVAILABLE AGAINST QUOTA
-        // Use a single query to get the quota and the current booking count
-        const [quotaCheck] = await pool.query(
-            `SELECT 
-                ts.quota, 
-                (SELECT COUNT(*) FROM bookings WHERE DATE(appointment_date) = ? AND TIME_FORMAT(appointment_date, '%H:%i') = ?) AS current_bookings
-            FROM time_slots ts 
-            WHERE TIME_FORMAT(ts.start_time, '%H:%i') = ?`,
-            [appointment_date_str, timeOnly, timeOnly]
-        );
-
-        if (quotaCheck.length === 0) {
-            return res.status(404).json({ message: "Selected time slot configuration not found." });
-        }
-
-        const { quota, current_bookings } = quotaCheck[0];
-
-        if (current_bookings >= quota) {
-            // This slot was taken or is full based on the quota.
-            return res.status(409).json({ 
-                message: "The selected time slot is now full. Please select another time." 
-            });
-        }
-        
-        // 3. Insert the new booking
-        const updatedSql = `
-            INSERT INTO bookings
-            (customer_email, service_id, appointment_date, status, notes, campaign_id, booking_date)
-            VALUES (?, ?, ?, 'Scheduled', ?, ?, NOW())
-        `;
-        
-        const [updatedResult] = await pool.execute(updatedSql, [
-            userEmail,
-            service_type_id,
-            finalAppointmentDateTime,
-            notes || null,
-            campaign_id || null
-        ]);
-
-        // 4. (Optional) If a campaign was used, update the user_campaigns status/link if needed
-        if (campaign_id) {
-            await pool.execute(
-                "UPDATE user_campaigns SET status = 'used', service_booking_id = ? WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
-                [updatedResult.insertId, campaign_id, userEmail]
-            );
-        }
-
-        res.status(201).json({
-            message: "Service booking created successfully!",
-            bookingId: updatedResult.insertId
-        });
-    } catch (error) {
-        console.error("❌ Booking insert error:", error);
-        res.status(500).json({
-            message: error.sqlMessage || error.message || "Internal server error"
-        });
-    }
-});
-
-
-// 🚗 VEHICLE ROUTES (MODIFIED FOR USER FILTERING)
-// GET /api/vehicles - list vehicles for the logged-in user
+// GET /api/vehicles - Fetch all vehicles for the logged-in user
 app.get("/api/vehicles", verifyToken, async (req, res) => {
-    // The user's email is available on req.user after verifyToken middleware runs
     const userEmail = req.user.email;
 
     try {
         const [rows] = await pool.query(
-            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.email = ? ORDER BY v.id DESC  ",
-            [userEmail] // <-- FILTERING BY THE LOGGED-IN USER'S EMAIL
+            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.email = ? ORDER BY v.id DESC", 
+            [userEmail]
         );
-        res.json(rows); // send array of vehicles
+        res.json(rows); 
     } catch (err) {
         console.error("Error fetching vehicles:", err);
         res.status(500).json({ error: "Failed to fetch vehicles" });
@@ -250,21 +160,20 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
 });
 
 
-// FIXED Code for GET /api/vehicles/:id
+// GET /api/vehicles/:id - Fetch a single vehicle and relevant campaigns
 app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
-    // 1. Get the URL parameter ID and the authenticated user's email
     const { id } = req.params; 
-    const userEmail = req.user.email; // From JWT payload
+    const userEmail = req.user.email;
 
     if (isNaN(parseInt(id))) {
         return res.status(400).json({ message: "Invalid vehicle ID format" });
     }
 
     try {
-        // 2. Fetch Vehicle Details
+        // 1. Fetch Vehicle Details
         const [rows] = await pool.query(
             "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ? AND v.email = ?",
-            [id, userEmail] 
+            [id, userEmail]
         );
 
         const vehicle = rows[0];
@@ -273,7 +182,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             return res.status(404).json({ message: "Vehicle not found or access denied" });
         }
 
-        // 🛑 NEW: 3. Fetch Campaigns relevant to this vehicle and user
+        // 2. Fetch Campaigns relevant to this vehicle and user
         const [campaignsRows] = await pool.query(`
             SELECT 
                 sc.id,
@@ -282,25 +191,22 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
                 sc.priority,
                 sc.discount_percent,
                 sc.valid_until,
-                -- Check if the user has an active booking for this campaign
                 CASE WHEN uc.user_email IS NOT NULL THEN 1 ELSE 0 END AS bookedByUser
             FROM service_campaigns sc
-            -- Link to user_campaigns to see if the user has booked it
             LEFT JOIN user_campaigns uc
                 ON sc.id = uc.campaign_id
                 AND uc.user_email = ?
                 AND uc.status = 'active'
             WHERE 
-                -- Filter by vehicle properties (adjust these WHERE clauses based on your campaign filtering rules)
                 (sc.brand_filter IS NULL OR sc.brand_filter = ?)
                 AND (sc.model_filter IS NULL OR sc.model_filter = ?)
                 AND (sc.year_filter IS NULL OR sc.year_filter = ?)
-                AND sc.valid_until >= CURDATE() -- Only include currently valid campaigns
+                AND sc.valid_until >= CURDATE()
             ORDER BY sc.priority DESC
         `, [userEmail, vehicle.brand, vehicle.model, vehicle.year]);
 
 
-        // 🛑 NEW: 4. Format and Attach Campaigns to the vehicle object
+        // 3. Format and Attach Campaigns to the vehicle object
         vehicle.activeCampaigns = campaignsRows.map(c => ({
             id: c.id,
             title: c.campaign_title,
@@ -309,11 +215,9 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
             validUntil: c.valid_until ? new Date(c.valid_until).toLocaleDateString("en-GB") : null,
             bookedByUser: !!c.bookedByUser
-        })).filter(c => !c.bookedByUser); // Only show campaigns that haven't been booked yet (optional filter)
+        })).filter(c => !c.bookedByUser); 
         
-        // If you want ALL matching campaigns (booked or not), remove the .filter(...) above.
-
-        // 5. Send the merged object
+        // 4. Send the merged object
         res.json(vehicle);
     } catch (err) {
         console.error(`❌ Error fetching vehicle ${id}:`, err);
@@ -322,7 +226,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
 });
 
 
-// ✅ Add Vehicle (MODIFIED FOR AUTHENTICATION)
+// POST /api/vehicles - Register a new vehicle
 app.post("/api/vehicles", verifyToken, async (req, res) => {
     const {
         name,
@@ -336,31 +240,19 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
         fuelType,
         year,
         kilometers,
-        // Removed email from destructuring, it comes from the JWT
     } = req.body;
 
-    // Use the email from the decoded JWT payload
     const userEmail = req.user.email;
 
-    // Validate required fields
     if (
-        !name ||
-        !surname ||
-        !phoneNumber ||
-        !vin ||
-        !licensePlate ||
-        !brand ||
-        !model ||
-        !vehicleType ||
-        !fuelType ||
-        !year ||
-        !kilometers
+        !name || !surname || !phoneNumber || !vin || !licensePlate ||
+        !brand || !model || !vehicleType || !fuelType || !year || !kilometers
     ) {
         return res.status(400).json({ message: "All fields are required" });
     }
 
     try {
-        // Check if VIN or license plate already exists
+        // Check for duplicate VIN or license plate
         const [existing] = await pool.query(
             "SELECT * FROM vehicles WHERE vin = ? OR license_plate = ?",
             [vin, licensePlate]
@@ -391,7 +283,7 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
             fuelType,
             year,
             kilometers,
-            userEmail // <-- Using the email from the JWT
+            userEmail 
         ]);
 
         res.status(201).json({
@@ -407,12 +299,167 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
 });
 
 
+// -------------------------------------------------------------
+// 🗓️ BOOKING ROUTES (MODIFIED & EXTENDED)
+// -------------------------------------------------------------
+
+// -------------------------------------------------------------
+// 🗓️ BOOKING ROUTES (MODIFIED & EXTENDED)
+// -------------------------------------------------------------
+
+// POST /api/bookings - Create a new appointment booking (uses logged-in user's name)
+// POST /api/bookings - Create a new appointment booking (uses logged-in user's name)
+app.post("/api/bookings", verifyToken, async (req, res) => {
+    const customerEmail = req.user.email;
+
+
+    // Build customer_name automatically using JWT data
+    let customerName = "";
+    if (req.user.name && req.user.surname) {
+        customerName = `${req.user.name} ${req.user.surname}`;
+    } else if (req.user.name) {
+        customerName = req.user.name;
+    } else if (req.user.surname) {
+        customerName = req.user.surname;
+    } else {
+        customerName = "Unknown Customer";
+    }
+
+    const { vehicleId, serviceTypeId, appointmentDate, appointmentTime } = req.body;
+
+    if (!vehicleId || !serviceTypeId || !appointmentDate || !appointmentTime) {
+        return res.status(400).json({
+            message: "Missing required booking details (vehicle, service, date, time)."
+        });
+    }
+
+    const appointmentDateTime = `${appointmentDate} ${appointmentTime}:00`;
+    const bookingDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+    try {
+        // Validate time slot quota
+        const [slotQuota] = await pool.query(
+            "SELECT quota FROM time_slots WHERE TIME_FORMAT(start_time, '%H:%i') = ?",
+            [appointmentTime]
+        );
+
+        const quota = slotQuota[0]?.quota || 20;
+
+        const [bookedCountResult] = await pool.query(
+            `SELECT COUNT(*) AS booked_count 
+             FROM bookings 
+             WHERE DATE(appointment_date) = ? 
+             AND TIME_FORMAT(appointment_date, '%H:%i') = ?`,
+            [appointmentDate, appointmentTime]
+        );
+
+        if (bookedCountResult[0].booked_count >= quota) {
+            return res.status(409).json({
+                message: "The selected time slot is fully booked. Please choose another time."
+            });
+        }
+
+        // Validate vehicle ownership
+        const [vehicleCheck] = await pool.query(
+            "SELECT id FROM vehicles WHERE id = ? AND email = ?",
+            [vehicleId, customerEmail]
+        );
+
+        if (vehicleCheck.length === 0) {
+            return res.status(403).json({
+                message: "Vehicle not found or you don't have permission to book for this vehicle."
+            });
+        }
+
+        // Insert booking
+        const sql = `
+            INSERT INTO bookings
+            (customer_name, customer_email, booking_date, appointment_date, status, servicetype_id, vehicle_id)
+            VALUES (?, ?, ?, ?, 'Scheduled', ?, ?)
+        `;
+
+        const [result] = await pool.execute(sql, [
+            customerName,
+            customerEmail,
+            bookingDateTime,
+            appointmentDateTime,
+            serviceTypeId,
+            vehicleId
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: "Appointment booked successfully!",
+            bookingId: result.insertId
+        });
+
+    } catch (error) {
+        console.error("❌ Booking creation error:", error);
+        res.status(500).json({
+            message: "Failed to create booking.",
+            error: error.message
+        });
+    }
+});
+
+
+
+// GET /api/bookings - Fetch all bookings for the logged-in user
+app.get("/api/bookings", verifyToken, async (req, res) => {
+    const customerEmail = req.user.email;
+    try {
+        const [rows] = await pool.query(
+            `SELECT 
+                b.booking_id, 
+                b.appointment_date, 
+                b.status, 
+                v.license_plate, 
+                v.brand, 
+                v.model,
+                s.label AS service_type 
+            FROM bookings b
+            JOIN vehicles v ON b.vehicle_id = v.id
+            JOIN servicetype s ON b.servicetype_id = s.id
+            WHERE b.customer_email = ?
+            ORDER BY b.appointment_date DESC`,
+            [customerEmail]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("Error fetching bookings:", err);
+        res.status(500).json({ error: "Failed to fetch bookings." });
+    }
+});
+
+
+// POST /api/bookings/:id/cancel - Cancel an existing booking
+app.post("/api/bookings/:id/cancel", verifyToken, async (req, res) => {
+    const bookingId = req.params.id;
+    const customerEmail = req.user.email;
+
+    try {
+        const [result] = await pool.execute(
+            "UPDATE bookings SET status = 'Cancelled' WHERE booking_id = ? AND customer_email = ? AND status = 'Scheduled'",
+            [bookingId, customerEmail]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Booking not found, not scheduled, or not owned by the user." });
+        }
+
+        res.json({ success: true, message: `Booking ID ${bookingId} has been successfully cancelled.` });
+    } catch (err) {
+        console.error(`Error cancelling booking ${bookingId}:`, err);
+        res.status(500).json({ error: "Failed to cancel booking." });
+    }
+});
+
 
 // -------------------------------------------------------------
 // 🔑 AUTH ROUTES
 // -------------------------------------------------------------
 
-// ✅ Google login/signup
+// POST /api/auth/google
 app.post("/api/auth/google", async (req, res) => {
     try {
         const { id_token, username, name, surname, phoneNumber } = req.body;
@@ -442,7 +489,7 @@ app.post("/api/auth/google", async (req, res) => {
                 [name, surname, username, email, google_id, phoneNumber || null, is_verified]
             );
             console.log(`🆕 New Google user inserted: ${email}`);
-            // Fetch the newly inserted user's data (especially ID and ROLE)
+            
             [existing] = await pool.query(
                 "SELECT * FROM users WHERE email = ?", 
                 [email]
@@ -451,21 +498,21 @@ app.post("/api/auth/google", async (req, res) => {
             console.log(`✅ Google user already exists: ${email}`);
         }
 
-        const user = existing[0]; // The user object is now ready
+        const user = existing[0];
 
         // --- 2. GENERATE JWT ---
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role }, // Payload must include ID and Role
+            { id: user.id, email: user.email, role: user.role , name: user.name , surname : user.surname}, 
             process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1h" }
         );
 
-        console.log("✅ Google user logged in:", user.email);
+        console.log("✅ Google user logged in:", user.email,user.name,user.surname);
 
         // --- 3. SEND RESPONSE WITH JWT ---
         res.json({ 
             success: true, 
-            token, // <-- 🔑 CRITICAL: JWT is now returned
+            token, 
             role: user.role, 
             email: user.email, 
             name: user.name, 
@@ -479,7 +526,7 @@ app.post("/api/auth/google", async (req, res) => {
 });
 
 
-// ✅ Manual Signup
+// POST /api/auth/signup
 app.post("/api/auth/signup", async (req, res) => {
     try {
         const { name, surname, phoneNumber, email, username, password, is_verified } = req.body;
@@ -488,7 +535,6 @@ app.post("/api/auth/signup", async (req, res) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // Optional: check if user already exists
         const [existing] = await pool.query(
             "SELECT * FROM users WHERE email = ? OR username = ?",
             [email, username]
@@ -497,10 +543,8 @@ app.post("/api/auth/signup", async (req, res) => {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        // Hash password if provided (only for manual signup)
         let hashedPassword = null;
         if (password) {
-            // bcrypt is required at the top of the file
             const salt = await bcrypt.genSalt(10);
             hashedPassword = await bcrypt.hash(password, salt);
         }
@@ -528,7 +572,7 @@ app.post("/api/auth/signup", async (req, res) => {
 });
 
 
-// ✅ Manual Signin
+// POST /api/auth/signin
 app.post("/api/auth/signin", async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -539,7 +583,6 @@ app.post("/api/auth/signin", async (req, res) => {
             return res.status(400).json({ message: "Email and password required" });
         }
 
-        // Check if user exists
         const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
 
         if (users.length === 0) {
@@ -548,21 +591,19 @@ app.post("/api/auth/signin", async (req, res) => {
 
         const user = users[0];
 
-        // Compare password
         const match = await bcrypt.compare(password, user.password);
 
         if (!match) {
             return res.status(401).json({ message: "Incorrect password" });
         }
 
-        // Generate JWT token
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role }, // Payload includes email
+            { id: user.id, email: user.email, role: user.role, name: user.name, surname: user.surname }, 
             process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1h" }
         );
 
-        console.log("✅ User logged in:", user.email);
+        console.log("✅ User logged in:", user.email, user.name, user.surname);
 
         res.json({
             success: true,
@@ -581,10 +622,10 @@ app.post("/api/auth/signin", async (req, res) => {
 
 
 // -------------------------------------------------------------
-// 🛠️ CAMPAIGN & NEWSLETTER ROUTES
+// 📢 CAMPAIGN & NEWSLETTER ROUTES
 // -------------------------------------------------------------
 
-// POST /api/newsletter
+// POST /api/newsletter - Subscribe/Update newsletter preferences
 app.post("/api/newsletter", async (req, res) => {
     try {
         const { email, phone, notifications, preferences } = req.body;
@@ -593,7 +634,6 @@ app.post("/api/newsletter", async (req, res) => {
             return res.status(400).json({ message: "Email is required" });
         }
 
-        // Insert into database
         const sql = `
             INSERT INTO newsletter_subscriptions 
             (email, phone, notify_email, notify_sms, notify_phone, pref_weekly_digest, pref_monthly_offers, pref_service_reminders)
@@ -627,21 +667,18 @@ app.post("/api/newsletter", async (req, res) => {
     }
 });
 
-// POST /api/newsletter/send
+// POST /api/newsletter/send - Admin route to send a newsletter to all subscribers
 app.post("/api/newsletter/send", async (req, res) => {
     const { subject, content } = req.body;
 
     try {
-        // 1️⃣ Get all subscribed users
         const [subscribers] = await pool.query("SELECT email FROM newsletter_subscriptions");
 
-        // 2️⃣ Send emails/SMS (simplified, just console for now)
         subscribers.forEach(user => {
             console.log(`Sending newsletter to ${user.email}`);
-            // sendEmail(user.email, subject, content) // implement actual email service
         });
 
-        // 3️⃣ Insert notification for each user
+        // Log notification for each user (simulating email sending)
         for (const user of subscribers) {
             await pool.query(
                 "INSERT INTO notifications (user_email, type, title, message) VALUES (?, 'Newsletter', ?, ?)",
@@ -656,8 +693,7 @@ app.post("/api/newsletter/send", async (req, res) => {
     }
 });
 
-// ✅ Get all service campaigns
-// GET /api/campaigns?email=user@example.com
+// GET /api/campaigns - Fetch all campaigns and check user booking status
 app.get("/api/campaigns", async (req, res) => {
     const { email } = req.query;
 
@@ -709,6 +745,7 @@ app.get("/api/campaigns", async (req, res) => {
 });
 
 
+// POST /api/campaigns/:id/book - Book a specific campaign for a user
 app.post("/api/campaigns/:id/book", async (req, res) => {
     const { email } = req.body;
     const { id } = req.params;
@@ -740,6 +777,7 @@ app.post("/api/campaigns/:id/book", async (req, res) => {
 });
 
 
+// POST /api/campaigns/:id/cancel - Cancel a campaign booking
 app.post("/api/campaigns/:id/cancel", async (req, res) => {
     const { email } = req.body;
     const { id } = req.params;
@@ -766,7 +804,7 @@ app.post("/api/campaigns/:id/cancel", async (req, res) => {
 });
 
 
-// ✅ Add Campaign
+// POST /api/campaigns - Create a new campaign (Admin use)
 app.post("/api/campaigns", async (req, res) => {
     const {
         campaign_title,
@@ -820,14 +858,13 @@ app.post("/api/campaigns", async (req, res) => {
 // 🛑 SERVER START & 404
 // -------------------------------------------------------------
 
-// ✅ Catch-all 404
+// Catch-all 404 handler for any undefined routes
 app.use((req, res) => {
     res.status(404).json({ message: "Route not found" });
 });
 
-// ✅ Start server
-// Using process.env.PORT with a default of 3007, as requested.
-const PORT = process.env.PORT || 3007; 
+// Start server
+const PORT = process.env.PORT || 3007;
 app.listen(PORT, () => {
     console.log(`✅ Backend running on http://localhost:${PORT}`);
 });

@@ -72,9 +72,6 @@ const getIconComponent = (iconName) => {
 };
 
 // --- Custom Calendar Mock Component (Updated for 7-day range, excluding Sunday) ---
-// Note: This component now accepts the sidebar state/handlers/content as props 
-// or pulls them from the outer scope if defined globally, but since it was nested
-// in the prompt, I'm defining it to accept the necessary props for the date picker functionality.
 const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, drawer, navigate }) => {
     
     // --- Date Calculation Logic (Corrected to be self-contained) ---
@@ -93,12 +90,6 @@ const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, d
     }
     // -------------------------------------------------------------------
     
-    // The drawer content needs to be defined within BookService and passed down 
-    // or defined here with hardcoded state/navigation if CalendarMock was meant to be the outer wrapper.
-    // Since the original code had the sidebar elements inside CalendarMock, 
-    // I'm assuming the intention was to lift the drawer logic out of CalendarMock, 
-    // but for the sake of completion, the passed-in props (mobileOpen, setMobileOpen, drawer) are used here.
-
     return (
         <Box>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
@@ -169,7 +160,7 @@ const BookService = () => {
         service: null, // Holds {id, name, cost, type, ...}
         date: defaultAppointmentDate, // Initialized to null
         timeSlot: null, // This now holds the TIME STRING, e.g., "09:00"
-        notes: "",
+        
         userEmail: userEmail,
     });
 
@@ -374,57 +365,62 @@ const BookService = () => {
     const handleBack = () => setStep((prevActiveStep) => prevActiveStep - 1);
 
     const handleBooking = async () => {
-        if (!userToken) {
-            alert("Authentication failed. Please sign in again.");
-            navigate("/signin");
-            return;
-        }
-        
-        setLoading(true);
-        
-        // Ensure all data is present before submission
-        if (!formData.date || !formData.timeSlot || !formData.service || !formData.vehicle) {
-            alert("Please complete all required fields before confirming.");
-            setLoading(false);
-            return;
-        }
+    if (!userToken) {
+        alert("Authentication failed. Please sign in again.");
+        navigate("/signin");
+        return;
+    }
 
-        const bookingPayload = {
-            customer_name: "Customer Name Mock", // Needs actual user name from context/state
-            customer_email: formData.userEmail,
-            // Format to 'YYYY-MM-DD HH:MM:SS' string as expected by backend
-            booking_date: `${formData.date.toISOString().split('T')[0]} ${formData.timeSlot}:00`, 
-            status: "Pending",
-            service_id: formData.service.id, 
-            vehicle_id: formData.vehicle.id, 
-            notes: formData.notes,
-        };
-        
-        console.log("Submitting Booking Payload:", bookingPayload);
+    setLoading(true);
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/bookings`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${userToken}`,
-                },
-                body: JSON.stringify(bookingPayload),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || `Failed to create booking: ${res.statusText}`);
-            }
-            alert("Service Appointment Booked Successfully!");
-            navigate("/dashboard");
-        } catch (error) {
-            console.error("Booking submission error:", error);
-            alert(`Error booking appointment: ${error.message}. Please try again.`);
-        }
-        
+    // Check required fields
+    if (!formData.date || !formData.timeSlot || !formData.service || !formData.vehicle) {
+        alert("Please complete all required fields before confirming.");
         setLoading(false);
+        return;
+    }
+
+    // Convert date & time into strings expected by backend
+    const appointmentDate = formData.date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const appointmentTime = formData.timeSlot.substring(0, 5);          // HH:MM
+
+    // THE ONLY VALID PAYLOAD FOR YOUR BACKEND
+    const bookingPayload = {
+        vehicleId: formData.vehicle.id,
+        serviceTypeId: formData.service.id,
+        appointmentDate: appointmentDate,
+        appointmentTime: appointmentTime
     };
+
+    console.log("Submitting Booking Payload:", bookingPayload);
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/bookings`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${userToken}`,
+            },
+            body: JSON.stringify(bookingPayload),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || `Failed to create booking: ${res.statusText}`);
+        }
+
+        alert("Service Appointment Booked Successfully!");
+        navigate("/dashboard");
+
+    } catch (error) {
+        console.error("Booking submission error:", error);
+        alert(`Error booking appointment: ${error.message}. Please try again.`);
+    }
+
+    setLoading(false);
+};
+
+    // --- 🛑 END FIX ---
 
     // Helper to format date for display
     const formatDate = (date) => {
@@ -507,8 +503,9 @@ const BookService = () => {
                                         >
                                             <CarRental sx={{ float: 'right', color: '#00bcd4' }} />
                                             <Typography variant="h6" fontWeight="bold">{vehicle.brand} {vehicle.model}</Typography>
-                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>License: {vehicle.licensePlate}</Typography>
-                                            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)" }}>VIN: {vehicle.vin}</Typography>
+                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>License: **{vehicle.license_plate}**</Typography>
+                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>VIN: {vehicle.vin}</Typography>
+                                            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>CRM Number: {vehicle.crm_number || "---"}</Typography>
                                         </Paper>
                                     </Grid>
                                 ))}
@@ -562,7 +559,7 @@ const BookService = () => {
                                                                 {service.label}
                                                             </Typography>
                                                             <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
-                                                                Cost: ${service.cost}
+                                                                Cost: **${service.cost}**
                                                             </Typography>
                                                         </Box>
                                                     }
@@ -659,30 +656,7 @@ const BookService = () => {
                                     </Grid>
                                 )}
                                 
-                                {/* MUI TextField Dark Mode Styling Enhanced (Continuation and Completion) */}
-                                <TextField
-                                    label="Additional Notes (Optional)"
-                                    multiline
-                                    rows={4}
-                                    fullWidth
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    variant="outlined"
-                                    sx={{ 
-                                        mt: 4, 
-                                        '& .MuiOutlinedInput-root': { 
-                                            color: 'white',
-                                            '& fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-                                            '&:hover fieldset': { borderColor: '#00bcd4' },
-                                            '&.Mui-focused fieldset': { borderColor: '#00bcd4' },
-                                            backgroundColor: 'rgba(255,255,255,0.05)',
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: 'rgba(255,255,255,0.7)',
-                                            '&.Mui-focused': { color: '#00bcd4' },
-                                        },
-                                    }}
-                                />
+                                
                             </Grid>
                         </Grid>
                     </Box>
@@ -694,105 +668,125 @@ const BookService = () => {
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
                             Review Your Appointment
                         </Typography>
-                        <Paper sx={{ p: 3, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Vehicle Details <CarRental sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
-                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
-                                    <Typography>**Make/Model:** {formData.vehicle?.brand} {formData.vehicle?.model}</Typography>
-                                    <Typography>**License Plate:** {formData.vehicle?.licensePlate}</Typography>
+                        <Paper sx={{ p: 3, background: "rgba(255,255,255,0.05)", borderRadius: 3, mb: 3 }}>
+                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: "white" }}>
+                                Appointment Summary
+                            </Typography>
+                            <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+
+                            {/* Vehicle Details */}
+                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                                <Grid item xs={12} sm={4}>
+                                    <CarRental sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
+                                    <Typography component="span" fontWeight="bold">Vehicle:</Typography>
                                 </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Service Details <Build sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
-                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
-                                    <Typography>**Service Type:** {formData.service?.label}</Typography>
-                                    <Typography>**Estimated Cost:** ${formData.service?.cost}</Typography>
+                                <Grid item xs={12} sm={8}>
+                                    <Typography>{formData.vehicle ? `${formData.vehicle.brand} ${formData.vehicle.model} (${formData.vehicle.license_plate})` : "Not Selected"}</Typography>
                                 </Grid>
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>Appointment Details <CheckCircle sx={{ fontSize: 18, verticalAlign: 'middle', ml: 0.5 }} /></Typography>
-                                    <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
-                                    <Typography>**Date:** {formatDate(formData.date)}</Typography>
-                                    <Typography>**Time Slot:** {formData.timeSlot}</Typography>
-                                </Grid>
-                                {formData.notes && (
-                                    <Grid item xs={12}>
-                                        <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>Additional Notes</Typography>
-                                        <Paper variant="outlined" sx={{ p: 1, mt: 1, background: "rgba(0,0,0,0.1)", borderColor: "rgba(255,255,255,0.1)" }}>
-                                            <Typography variant="body2">{formData.notes}</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
                             </Grid>
+                            
+                            {/* Service Details */}
+                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                                <Grid item xs={12} sm={4}>
+                                    {getIconComponent(formData.service?.type)}
+                                    <Typography component="span" fontWeight="bold">Service:</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={8}>
+                                    <Typography>{formData.service ? `${formData.service.label} ($${formData.service.cost})` : "Not Selected"}</Typography>
+                                </Grid>
+                            </Grid>
+
+                            {/* Date & Time Details */}
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={4}>
+                                    <EventAvailable sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
+                                    <Typography component="span" fontWeight="bold">Date & Time:</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={8}>
+                                    <Typography>{formData.date ? formatDate(formData.date) : "N/A"} at **{formData.timeSlot || "N/A"}**</Typography>
+                                </Grid>
+                            </Grid>
+                            
                         </Paper>
+
+                        {isStepValid() ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: '#00bcd4' }}>
+                                <CheckCircle sx={{ mr: 1 }} />
+                                <Typography fontWeight="bold">All required fields are complete. Click "Confirm Booking" to finalize.</Typography>
+                            </Box>
+                        ) : (
+                            <Typography color="error" fontWeight="bold">Please go back and ensure all selections (Vehicle, Service, Date, Time) are valid before confirming.</Typography>
+                        )}
+                        
                     </Box>
                 );
-
             default:
-                return <Typography>Unknown step</Typography>;
+                return 'Unknown step';
         }
     };
 
-    // --- Main Render Structure ---
+    // --- Main Render ---
     return (
-        <Box sx={{ 
-            display: 'flex', 
-            minHeight: '100vh', 
-            background: '#1e1e1e', // Dark background for the app
-            color: 'white',
-        }}>
-            {/* Mobile Hamburger */}
-            <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
-                <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
+        <Box sx={{ p: 3, background: "#121212", minHeight: "100vh", color: "white" }}>
+            {/* Header with Menu Icon for Mobile */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <IconButton
+                    color="inherit"
+                    aria-label="open drawer"
+                    edge="start"
+                    onClick={() => setMobileOpen(true)}
+                    sx={{ mr: 2, display: { md: 'none' }, color: '#00bcd4' }}
+                >
                     <MenuIcon />
                 </IconButton>
+                <Typography variant="h4" fontWeight="bold" sx={{
+                    background: "linear-gradient(90deg, #fff, #00bcd4)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    flexGrow: 1
+                }}>
+                    Book Your Service Appointment
+                </Typography>
+                {/* User Email Display */}
+                {userEmail && (
+                    <Chip 
+                        label={userEmail} 
+                        variant="outlined" 
+                        sx={{ color: '#00bcd4', borderColor: '#00bcd4', display: { xs: 'none', sm: 'flex' } }} 
+                    />
+                )}
             </Box>
-    
-            {/* Mobile Drawer */}
+
+            {/* Mobile Drawer/Sidebar */}
             <Drawer
-                anchor="left" // Changed to left for standard sidebar feel
+                variant="temporary"
                 open={mobileOpen}
                 onClose={() => setMobileOpen(false)}
-                sx={{ 
-                    display: { xs: "block", md: "none" }, 
-                    "& .MuiDrawer-paper": { 
-                        background: "rgba(0,0,0,0.9)", 
-                        color: "white",
-                        boxSizing: 'border-box',
-                        width: 250
-                    } 
+                ModalProps={{
+                    keepMounted: true, // Better open performance on mobile.
                 }}
             >
                 {drawerContent}
             </Drawer>
             
-            {/* Desktop Sidebar */}
-            <Box 
+            {/* Main Content */}
+            <Paper 
+                elevation={6} 
                 sx={{ 
-                    width: 250, 
-                    background: "rgba(255,255,255,0.05)", 
-                    borderRight: "1px solid rgba(255,255,255,0.1)", 
-                    display: { xs: "none", md: "block" },
-                    flexShrink: 0
+                    p: 4, 
+                    borderRadius: 4, 
+                    background: "rgba(255,255,255,0.05)",
+                    border: '1px solid rgba(255,255,255,0.1)'
                 }}
             >
-                {drawerContent}
-            </Box>
-
-            {/* Main Content Area */}
-            <Box 
-                component="main" 
-                sx={{ 
-                    flexGrow: 1, 
-                    p: { xs: 2, sm: 4 }, 
-                    pt: { xs: 8, sm: 4 }, // Add padding top for mobile hamburger clearance
-                    width: { sm: `calc(100% - 250px)` },
-                }}
-            >
-                <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ mb: 4 }}>
-                    Book a Service Appointment
-                </Typography>
-
-                <Stepper activeStep={step} alternativeLabel sx={{ mb: 4, '& .MuiStepLabel-label': { color: 'rgba(255,255,255,0.7)' }, '& .MuiStepIcon-root.Mui-active': { color: '#00bcd4' }, '& .MuiStepIcon-root.Mui-completed': { color: '#00bcd4' } }}>
+                <Stepper activeStep={step} alternativeLabel sx={{ mb: 4, 
+                    '.MuiStepLabel-label': { color: 'white' },
+                    '.Mui-active .MuiStepLabel-label': { color: '#00bcd4', fontWeight: 'bold' },
+                    '.Mui-completed .MuiStepLabel-label': { color: '#00bcd4' },
+                    '.MuiStepIcon-root': { color: 'rgba(255,255,255,0.3)' },
+                    '.Mui-active .MuiStepIcon-root': { color: '#00bcd4' },
+                    '.Mui-completed .MuiStepIcon-root': { color: '#00bcd4' },
+                }}>
                     {steps.map((label) => (
                         <Step key={label}>
                             <StepLabel>{label}</StepLabel>
@@ -800,45 +794,37 @@ const BookService = () => {
                     ))}
                 </Stepper>
 
-                <Paper sx={{ p: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4 }}>
+                <Box>
                     {getStepContent(step)}
-                </Paper>
+                </Box>
 
-                {/* Navigation Buttons */}
-                <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: "flex", flexDirection: "row", pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)', mt: 3, pt: 3 }}>
                     <Button
                         color="inherit"
                         disabled={step === 0 || loading}
                         onClick={handleBack}
-                        sx={{ mr: 1, color: "rgba(255,255,255,0.7)" }}
+                        sx={{ mr: 1, color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
                         startIcon={<ChevronLeft />}
                     >
                         Back
                     </Button>
-                    
-                    {step === steps.length - 1 ? (
-                        <Button
-                            variant="contained"
-                            onClick={handleBooking}
-                            disabled={!isStepValid() || loading}
-                            sx={{ bgcolor: '#00bcd4', color: '#000', '&:hover': { bgcolor: '#00a3bd' } }}
-                            endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
-                        >
-                            {loading ? "Confirming..." : "Confirm Booking"}
-                        </Button>
-                    ) : (
-                        <Button
-                            variant="contained"
-                            onClick={handleNext}
-                            disabled={!isStepValid() || loading}
-                            sx={{ bgcolor: '#00bcd4', color: '#000', '&:hover': { bgcolor: '#00a3bd' } }}
-                            endIcon={<ChevronRight />}
-                        >
-                            Next
-                        </Button>
-                    )}
+                    <Box sx={{ flex: "1 1 auto" }} />
+                    <Button
+                        onClick={step === steps.length - 1 ? handleBooking : handleNext}
+                        disabled={!isStepValid() || loading}
+                        variant="contained"
+                        sx={{ 
+                            bgcolor: "#00bcd4", 
+                            color: "#000", 
+                            fontWeight: "bold",
+                            "&:hover": { bgcolor: "#00a0b2" }
+                        }}
+                        endIcon={step === steps.length - 1 ? (loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />) : <ChevronRight />}
+                    >
+                        {step === steps.length - 1 ? (loading ? "Booking..." : "Confirm Booking") : "Next"}
+                    </Button>
                 </Box>
-            </Box>
+            </Paper>
         </Box>
     );
 };

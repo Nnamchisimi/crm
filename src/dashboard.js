@@ -36,6 +36,8 @@ const Dashboard = () => {
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
   const userEmail = localStorage.getItem("userEmail");
+  const userName = localStorage.getItem("userName");
+  
   // Calculate upcoming bookings based on campaign.validUntil
 // Count how many campaigns share the closest validUntil date
 const getClosestDateCount = () => {
