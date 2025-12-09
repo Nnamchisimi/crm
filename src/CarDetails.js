@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Typography, Button, Chip, Paper, Divider } from "@mui/material";
+import EditCarDetails from "./editcardetails";
 
 const CarDetails = () => {
     const { id } = useParams();
@@ -9,6 +10,53 @@ const CarDetails = () => {
     const [error, setError] = useState(null);
     // 1. ADDED: State to track the active tab
     const [activeTab, setActiveTab] = useState("Overview"); 
+
+    // State to control the Edit Modal
+    const [isEditCarOpen, setIsEditCarOpen] = useState(false);
+
+    // Function to handle the update from the modal
+    const handleVehicleUpdate = (updatedData) => {
+        // This function runs when the EditModal successfully saves data
+        setVehicle(updatedData);
+    };
+
+    const fetchVehicleDetails = async () => {
+        setError(null);
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            console.error("Authentication token is missing. Redirecting.");
+            setError("Access denied. Please log in.");
+            return;
+        }
+
+        try {
+            const res = await fetch(`http://localhost:3007/api/vehicles/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load vehicle. Server returned status: ${res.status}`);
+            }
+            const data = await res.json();
+            // Ensure data structure compatibility (backend might use fuel_type/type)
+            const normalizedData = {
+                ...data,
+                fuelType: data.fuelType || data.fuel_type,
+                vehicleType: data.vehicleType || data.type,
+            };
+            setVehicle(normalizedData);
+
+        } catch (err) {
+            console.error("Fetch or Auth Error:", err);
+            setError(err.message);
+            setVehicle(null);
+        }
+    };
 
     useEffect(() => {
         setError(null); 
@@ -157,12 +205,30 @@ const renderTabContent = () => {
 
     return (
         <Box sx={{ p: 4, color: "white" }}>
+         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Button
                 onClick={() => navigate("/dashboard")}
                 sx={{ color: "#00bcd4", mb: 3 }}
             >
                 ← Back to Dashboard
             </Button>
+
+            {/* Edit Details Button */}
+                <Button 
+                    variant="outlined" 
+                    onClick={() => setIsEditCarOpen(true)}
+                    sx={{ 
+                        color: 'white', 
+                        borderColor: '#00bcd4', 
+                        '&:hover': { 
+                            borderColor: 'white', 
+                            bgcolor: 'rgba(0,188,212, 0.1)' 
+                        } 
+                    }}
+                >
+                    Edit Details
+                </Button>
+            </Box>
 
             {/* Vehicle Header Info (Always visible) */}
             <Typography variant="h5" sx={{ color: "#00bcd4", mb: 1 }}>
@@ -173,8 +239,11 @@ const renderTabContent = () => {
                 {vehicle.brand} {vehicle.model}
             </Typography>
 
+             
+            
+
             <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 2 }}>
-                {vehicle.licensePlate} • {vehicle.year} {vehicle.vehicleType}
+                {vehicle.license_plate} • {vehicle.year} {vehicle.vehicle_type}
             </Typography>
 
             <Typography sx={{ fontSize: 18, mb: 3 }}>
@@ -193,6 +262,8 @@ const renderTabContent = () => {
                     mb: 4,
                 }}
             >
+                 <Typography sx={{ fontWeight: "bold" }}>Phone Number</Typography>
+                 <Typography sx={{ color: "#00bcd4", mb: 1 }}>{vehicle.phone_number || "No Phone"} </Typography>
                 <Typography sx={{ fontWeight: "bold" }}>VIN</Typography>
                 <Typography sx={{ mb: 2 }}>{vehicle.vin || "—"}</Typography>
                 <Typography sx={{ fontWeight: "bold" }}>Fuel Type</Typography>
@@ -230,6 +301,17 @@ const renderTabContent = () => {
             <Box>
                 {renderTabContent()}
             </Box>
+
+            {/* The Edit Modal Component */}
+            {vehicle && (
+                <EditCarDetails
+                    open={isEditCarOpen}
+                    handleClose={() => setIsEditCarOpen(false)}
+                    vehicle={vehicle}
+                    onUpdate={handleVehicleUpdate}
+                />
+            )}
+        
         </Box>
     );
 };

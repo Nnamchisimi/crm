@@ -226,6 +226,85 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
 });
 
 
+// PUT /api/vehicles/:id - Update an existing vehicle's details
+app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const userEmail = req.user.email; // Ensure the logged-in user owns the vehicle
+    const {
+        name,
+        surname,
+        phoneNumber,
+        vin,
+        licensePlate,
+        brand,
+        model,
+        vehicleType,
+        fuelType,
+        year,
+        kilometers,
+    } = req.body;
+
+    // Basic Validation (Check for required fields if needed, or rely on frontend validation)
+    if (!name || !surname || !licensePlate || !brand || !model || !vehicleType || !fuelType || !year || kilometers === undefined) {
+        return res.status(400).json({ message: "Missing required fields for update." });
+    }
+
+    try {
+        const sql = `
+            UPDATE vehicles
+            SET 
+                name = ?, 
+                surname = ?, 
+                phone_number = ?, 
+                vin = ?, 
+                license_plate = ?, 
+                brand = ?, 
+                model = ?, 
+                vehicle_type = ?, 
+                fuel_type = ?, 
+                year = ?, 
+                kilometers = ?
+            WHERE id = ? AND email = ?
+        `;
+
+        const [result] = await pool.execute(sql, [
+            name,
+            surname,
+            phoneNumber,
+            vin,
+            licensePlate,
+            brand,
+            model,
+            vehicleType,
+            fuelType,
+            year,
+            kilometers,
+            id,
+            userEmail 
+        ]);
+
+        if (result.affectedRows === 0) {
+            // This happens if the vehicle ID doesn't exist OR if the user doesn't own it
+            return res.status(404).json({ message: "Vehicle not found or update unauthorized." });
+        }
+
+        // Fetch the updated vehicle details to send back to the frontend
+        const [updatedRows] = await pool.query(
+            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ?",
+            [id]
+        );
+        
+        // The frontend expects the updated vehicle object on success
+        res.json(updatedRows[0]); 
+
+    } catch (error) {
+        console.error(`❌ Vehicle update error for ID ${id}:`, error);
+        res.status(500).json({
+            message: error.sqlMessage || error.message || "Internal server error during update"
+        });
+    }
+});
+
 // POST /api/vehicles - Register a new vehicle
 app.post("/api/vehicles", verifyToken, async (req, res) => {
     const {

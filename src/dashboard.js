@@ -25,6 +25,7 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EmailIcon from "@mui/icons-material/Email";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { BrandLogo } from './BrandLogo';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -331,15 +332,25 @@ const getClosestDateCount = () => {
       }}
     >
       
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                 <BrandLogo brand={vehicle.brand} size="lg" showName={false} /> {/* Display only the logo, large size */}
+                                        <Box sx={{ ml: 1 }}>
+                                            <Typography variant="h6" fontWeight="bold" sx={{ m: 0 }}>
+                                                {vehicle.brand || "---"} {vehicle.model || "---"}
+                                            </Typography>
+                                         
+                                        </Box>
+                                    </Box>
+                                    <Divider sx={{ mb: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+                <Box>
+        </Box>
       <Box>
-        <Typography variant="subtitle1" sx={{ color: "rgba(255,255,255,0.7)" }}>
-          {vehicle.name|| "Unknown Customer"}
-        </Typography>
-        <Typography variant="h6">
-          {vehicle.brand || "---"} {vehicle.model || "---"}
-        </Typography>
+    
+          <Typography variant="subtitle2" sx={{ color: "rgba(255,255,255,0.7)", mt: -0.5 }}>
+                  {vehicle.name || "Unknown Customer"}
+          </Typography>
         <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-          {vehicle.type || "---"} • {vehicle.year || "---"} • {vehicle.licensePlate || "---"}
+          {vehicle.vehicle_type || "---"} • {vehicle.year || "---"} • {vehicle.license_plate || "---"}
         </Typography>
         <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
           VIN: {vehicle.vin || "---"}
