@@ -79,6 +79,22 @@ app.get("/api/servicetype", verifyToken, async (req, res) => {
     }
 });
 
+//branch route
+app.get("/api/branch", verifyToken,async(req,res)=>{
+    try{
+        const [rows] = await pool.query(
+            "SELECT id, name FROM branch ORDER  BY id"
+            
+        );
+        res.json (rows);
+
+    } catch(err){
+        console.error("Error fetching branches:".err);
+        res.status(500).json({ error: "Failed to fetch branches"});
+    }
+
+});
+
 // GET /api/timeslots - Fetch available time slots for a given date, respecting the quota
 app.get("/api/timeslots", verifyToken, async (req, res) => {
     const { date } = req.query; // Expected format: 'YYYY-MM-DD'
@@ -404,11 +420,11 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
         customerName = "Unknown Customer";
     }
 
-    const { vehicleId, serviceTypeId, appointmentDate, appointmentTime } = req.body;
+    const { vehicleId, serviceTypeId,branchId, appointmentDate, appointmentTime } = req.body;
 
-    if (!vehicleId || !serviceTypeId || !appointmentDate || !appointmentTime) {
+    if (!vehicleId || !serviceTypeId ||!branchId || !appointmentDate || !appointmentTime) {
         return res.status(400).json({
-            message: "Missing required booking details (vehicle, service, date, time)."
+            message: "Missing required booking details (vehicle, service, branch, date, time)."
         });
     }
 
@@ -453,8 +469,8 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
         // Insert booking
         const sql = `
             INSERT INTO bookings
-            (customer_name, customer_email, booking_date, appointment_date, status, servicetype_id, vehicle_id)
-            VALUES (?, ?, ?, ?, 'Scheduled', ?, ?)
+            (customer_name, customer_email, booking_date, appointment_date, status, servicetype_id, vehicle_id, branch_id)
+            VALUES (?, ?, ?, ?, 'Scheduled', ?, ?,?)
         `;
 
         const [result] = await pool.execute(sql, [
@@ -463,7 +479,10 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
             bookingDateTime,
             appointmentDateTime,
             serviceTypeId,
-            vehicleId
+            vehicleId,
+            branchId
+           
+
         ]);
 
         res.status(201).json({
@@ -499,6 +518,7 @@ app.get("/api/bookings", verifyToken, async (req, res) => {
             FROM bookings b
             JOIN vehicles v ON b.vehicle_id = v.id
             JOIN servicetype s ON b.servicetype_id = s.id
+            JOIN branch br ON b.branch_id = br.id
             WHERE b.customer_email = ?
             ORDER BY b.appointment_date DESC`,
             [customerEmail]

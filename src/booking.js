@@ -28,6 +28,7 @@ import {
     EventAvailable, 
     CheckCircle, 
     CarRental, 
+    LocationOn,
     Build, 
     Tune, 
     FlashOn, 
@@ -54,6 +55,7 @@ const defaultAppointmentDate = null;
 
 const steps = [
     "Select Vehicle",
+    "Choose Branch",
     "Choose Service",
     "Pick Date & Time",
     "Review & Confirm",
@@ -143,6 +145,8 @@ const BookService = () => {
     const [vehicleLoading, setVehicleLoading] = useState(true); 
     const [serviceTypes, setServiceTypes] = useState([]);
     const [serviceLoading, setServiceLoading] = useState(true); 
+    const [branchLoading,  setBranchLoading]=useState(true);
+    const[branch,setBranch]= useState([]);
     const [mobileOpen, setMobileOpen] = useState(false); // Mobile sidebar state
     
     // State for Time Slots
@@ -253,6 +257,44 @@ const BookService = () => {
         };
         fetchVehicles();
     }, [userToken, navigate]);
+
+     useEffect(() => {
+        const fetchbranch = async () => {
+            setBranchLoading(true);
+            
+            if (!userToken) {
+                setBranchLoading(false);
+                return; 
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/branch`, {
+                    headers: {
+                        "Authorization": `Bearer ${userToken}`,
+                    },
+                }); 
+                
+                if (res.status === 401 || res.status === 403) {
+                    handleAuthError();
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+
+                const data = await res.json();
+                setBranch(data);
+            } catch (err) {
+                console.error("Error fetching service types:", err);
+            } finally {
+                setBranchLoading(false);
+            }
+        };
+        
+        fetchbranch(); 
+        
+    }, [userToken, navigate]); 
 
     // 2. Fetch Service Type Data
     useEffect(() => {
@@ -374,7 +416,7 @@ const BookService = () => {
     setLoading(true);
 
     // Check required fields
-    if (!formData.date || !formData.timeSlot || !formData.service || !formData.vehicle) {
+    if (!formData.date || !formData.timeSlot || !formData.service || !formData.branch|| !formData.vehicle) {
         alert("Please complete all required fields before confirming.");
         setLoading(false);
         return;
@@ -388,6 +430,7 @@ const BookService = () => {
     const bookingPayload = {
         vehicleId: formData.vehicle.id,
         serviceTypeId: formData.service.id,
+        branchId: formData.branch.id,
         appointmentDate: appointmentDate,
         appointmentTime: appointmentTime
     };
@@ -431,23 +474,27 @@ const BookService = () => {
     // --- Step Validation Logic ---
     const isStepValid = () => {
         // Prevent progression if critical data is still loading
-        if (step === 0 && (vehicleLoading || !userToken)) return false; 
-        if (step === 1 && (serviceLoading || !userToken)) return false; 
-        if (step === 2 && loadingSlots) return false;
+        if (step === 0 && (vehicleLoading || !userToken)) return false;
+          if(step ===1 &&(branchLoading || !userToken)) return false; 
+        if (step === 2 && (serviceLoading || !userToken)) return false;  
+        if (step === 3 && loadingSlots) return false;
         
         switch (step) {
             case 0: // Vehicle must be selected
                 return !!formData.vehicle;
                 
-            case 1: // Service must be selected
+                case 1: // branch must be selected
+                return !!formData.branch;
+                
+            case 2: // Service must be selected
                 return !!formData.service;
                 
-            case 2: // Date and a valid time string must be selected
+            case 3: // Date and a valid time string must be selected
                 const selectedSlot = availableTimeSlots.find(s => s.slot_time === formData.timeSlot);
                 // Check if date is selected, timeSlot string is set, slot object exists, and is available
                 return isDateSelected && !!formData.timeSlot && !!selectedSlot && selectedSlot.is_available;
                 
-            case 3: // Review step, ensure all parts are complete (Vehicle, Service, Date, Time)
+            case 4: // Review step, ensure all parts are complete (Vehicle, Service, Date, Time)
                 // Re-evaluate previous checks
                 const isStep2Valid = (() => {
                     const slot = availableTimeSlots.find(s => s.slot_time === formData.timeSlot);
@@ -455,7 +502,7 @@ const BookService = () => {
                 })();
                 
                 // Check all required fields
-                return !!formData.vehicle && !!formData.service && isStep2Valid;
+                return !!formData.vehicle && !!formData.service &&!!formData.branch && isStep2Valid;
                 
             default:
                 return false;
@@ -487,13 +534,13 @@ const BookService = () => {
                         ) : (
                             <Grid container spacing={3}>
                                 {vehicles.map((vehicle) => (
-                                    <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
+                                    <Grid item xs={6} sm={6} md={4} key={vehicle.id}>
                                         <Paper
                                             onClick={() => setFormData({ ...formData, vehicle })}
                                             sx={{
-                                                p: 3,
+                                                p: 1,
                                                  width: 300,
-                                                 height: 190,
+                                                 height: 170,
                                                 borderRadius: 3,
                                                 background: formData.vehicle?.id === vehicle.id 
                                                     ? "rgba(0,188,212,0.2)"
@@ -516,7 +563,81 @@ const BookService = () => {
                     </Box>
                 );
 
-            case 1: // Step 2: Choose Service
+            case 1://Choose Branch
+                    return (
+                        <FormControl component="fieldset" fullwidth>
+                            <Typography variant="h6" gutterBottom SX={{COLOR: "#00bcd4"}}>
+                                Choose a Branch
+                            </Typography>
+                            {branchLoading ?(
+                                <Box sx ={{display: 'flex', justifyContent: 'center'}}><CircularProgress sx= {{color: '#00bcd4'}}/></Box> 
+                            ): !userToken ? (
+                                <Typography color ="error"> Error: Not Authenticated . Cannot Load branches.</Typography>
+
+                            ): branch.length=== 0 ? (
+                                <Typography color = "error"> Error: No Branches available at the moment . Please contact Support</Typography>
+
+                            ): (
+                                <RadioGroup
+                                value ={formData.branch? formData.branch.id:""}
+                                onChange={(e)=> {
+                                    const selectedBranch= branch && branch.find(br=> String(br.id) === e.target.value);
+                                    setFormData({...formData, branch: selectedBranch});
+                                }}>
+
+                            <Grid container spacing={3}>
+                                    {branch.map((branch) => (
+                                        <Grid item xs={6} sm={6} md={4} key={branch.id}>
+                                            <Paper
+                                                sx={{
+                                                    p: 0.5,
+                                                    borderRadius: 3,
+                                                     width: 150,
+                                                      height: 150,
+                                                    background: formData.branch?.id === branch.id ? "rgba(0,188,212,0.2)" : "rgba(255,255,255,0.05)",
+                                                    border: `2px solid ${formData.branch?.id === branch.id ? "#00bcd4" : "rgba(255,255,255,0.1)"}`,
+                                                    "&:hover": { background: "rgba(255,255,255,0.1)", cursor: "pointer" },
+                                                }}
+                                                onClick={() => setFormData({ ...formData, branch })} 
+                                            >
+                                                <Box sx={{ float: 'right', color: '#00bcd4' }}>
+                                                    {getIconComponent(branch.type)}
+                                                </Box>
+                                                <FormControlLabel
+                                                    value={String(branch.id)}
+                                                    control={<Radio sx={{ color: '#00bcd4' }} />}
+                                                    label={
+                                                        <Box>
+                                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                                {branch.name}
+                                                            </Typography>
+                                                            
+                                                        </Box>
+                                                    }
+                                                    labelPlacement="start"
+                                                    sx={{ justifyContent: 'space-between', width: '100%', m: 0 }}
+                                                />
+                                            </Paper>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                                    
+
+
+
+
+
+                                </RadioGroup>
+
+                                
+                           
+                            )}
+
+
+                        </FormControl>
+                           
+                        );
+           case 2: // Step 2: Choose Service
                 return (
                     <FormControl component="fieldset" fullWidth>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -536,50 +657,98 @@ const BookService = () => {
                                     setFormData({ ...formData, service: selectedService });
                                 }}
                             >
-                                <Grid container spacing={3}>
-                                    {serviceTypes.map((service) => (
-                                        <Grid item xs={12} sm={6} md={4} key={service.id}>
-                                            <Paper
-                                                sx={{
-                                                    p: 2,
-                                                    borderRadius: 3,
-                                                     width: 190,
-                                                      height: 150,
-                                                    background: formData.service?.id === service.id ? "rgba(0,188,212,0.2)" : "rgba(255,255,255,0.05)",
-                                                    border: `2px solid ${formData.service?.id === service.id ? "#00bcd4" : "rgba(255,255,255,0.1)"}`,
-                                                    "&:hover": { background: "rgba(255,255,255,0.1)", cursor: "pointer" },
-                                                }}
-                                                onClick={() => setFormData({ ...formData, service })} 
+                              <Grid container spacing={2}>
+                                        {serviceTypes.map((service) => (
+                                            <Grid 
+                                                item 
+                                                xs={6}     // Always 2 per row on mobile
+                                                sm={6}     // 2 per row on tablets
+                                                md={4}     // 3 per row on medium+
+                                                key={service.id}
                                             >
-                                                <Box sx={{ float: 'right', color: '#00bcd4' }}>
-                                                    {getIconComponent(service.type)}
-                                                </Box>
-                                                <FormControlLabel
-                                                    value={String(service.id)}
-                                                    control={<Radio sx={{ color: '#00bcd4' }} />}
-                                                    label={
-                                                        <Box>
-                                                            <Typography variant="subtitle1" fontWeight="bold">
-                                                                {service.label}
-                                                            </Typography>
-                                                            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
-                                                                Cost: ${service.cost}
-                                                            </Typography>
-                                                        </Box>
-                                                    }
-                                                    labelPlacement="start"
-                                                    sx={{ justifyContent: 'space-between', width: '100%', m: 0 }}
-                                                />
-                                            </Paper>
-                                        </Grid>
-                                    ))}
-                                </Grid>
+                                                <Paper
+                                                    sx={{
+                                                        p: 0.5,
+                                                        borderRadius: 3,
+                                                        height: 150,                      // 🔥 FIXED BOX HEIGHT
+                                                        width :150,
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        justifyContent: "flex-start",
+                                                        background: formData.service?.id === service.id 
+                                                            ? "rgba(0,188,212,0.2)" 
+                                                            : "rgba(255,255,255,0.05)",
+                                                        border: `2px solid ${
+                                                            formData.service?.id === service.id 
+                                                                ? "#00bcd4" 
+                                                                : "rgba(255,255,255,0.1)"
+                                                        }`,
+                                                        transition: "0.2s",
+                                                        "&:hover": {
+                                                            background: "rgba(255,255,255,0.1)", 
+                                                            cursor: "pointer"
+                                                        }
+                                                    }}
+                                                    onClick={() => setFormData({ ...formData, service })}
+                                                >
+                                                    {/* Icon - stays fixed in the top-right corner */}
+                                                    <Box 
+                                                        sx={{ 
+                                                            alignSelf: "flex-end", 
+                                                            fontSize: "2rem", 
+                                                            color: "#00bcd4" 
+                                                        }}
+                                                    >
+                                                        {getIconComponent(service.type)}
+                                                    </Box>
+
+                                                    {/* Scrollable content region */}
+                                                    <Box sx={{ overflowY: "auto", flexGrow: 1 }}>
+                                                        <FormControlLabel
+                                                            value={String(service.id)}
+                                                            control={<Radio sx={{ color: '#00bcd4' }} />}
+                                                            label={
+                                                                <Box>
+                                                                    <Typography variant="subtitle1" fontWeight="bold">
+                                                                        {service.label}
+                                                                    </Typography>
+                                                                    <Typography 
+                                                                        variant="body2" 
+                                                                        sx={{ color: "rgba(255,255,255,0.7)" }}
+                                                                    >
+                                                                        Cost: ${service.cost}
+                                                                    </Typography>
+                                                                    {/* If longer text appears, it scrolls */}
+                                                                    {service.description && (
+                                                                        <Typography 
+                                                                            variant="body2" 
+                                                                            sx={{ mt: 1, opacity: 0.7 }}
+                                                                        >
+                                                                            {service.description}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            }
+                                                            labelPlacement="start"
+                                                            sx={{ 
+                                                                width: "100%", 
+                                                                m: 0, 
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                </Paper>
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+
+
                             </RadioGroup>
                         )}
                     </FormControl>
                 );
 
-            case 2: // Step 3: Pick Date & Time
+           
+            case 3: // Step 3: Pick Date & Time
                 return (
                     <Box>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -666,7 +835,7 @@ const BookService = () => {
                     </Box>
                 );
 
-            case 3: // Step 4: Review & Confirm
+            case 4: // Step 4: Review & Confirm
                 return (
                     <Box>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -686,6 +855,17 @@ const BookService = () => {
                                 </Grid>
                                 <Grid item xs={12} sm={8}>
                                     <Typography>{formData.vehicle ? `${formData.vehicle.brand} ${formData.vehicle.model} (${formData.vehicle.license_plate})` : "Not Selected"}</Typography>
+                                </Grid>
+                            </Grid>
+
+                              {/* Branch Details */}
+                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                                <Grid item xs={12} sm={4}>
+                                   <LocationOn sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
+                                    <Typography component="span" fontWeight="bold">Branch:</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={8}>
+                                    <Typography>{formData.branch ? `${formData.branch.name} ` : "Not Selected"}</Typography>
                                 </Grid>
                             </Grid>
                             
@@ -745,15 +925,11 @@ return (
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                 {/* Mobile menu button */}
-                <IconButton
-                    color="inherit"
-                    aria-label="open drawer"
-                    edge="start"
-                    onClick={() => setMobileOpen(true)}
-                    sx={{ mr: 2, display: { md: 'none' }, color: '#00bcd4' }}
-                >
-                    <MenuIcon />
-                </IconButton>
+                   <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
+                        <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
+                          <MenuIcon />
+                        </IconButton>
+                      </Box>
 
                 <Typography variant="h4" fontWeight="bold" sx={{
                     background: "linear-gradient(90deg, #fff, #00bcd4)",
@@ -777,6 +953,7 @@ return (
             <Drawer
                 variant="temporary"
                 open={mobileOpen}
+                anchor= "right"
                 onClose={() => setMobileOpen(false)}
                 ModalProps={{ keepMounted: true }}
             >

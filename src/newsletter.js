@@ -183,6 +183,7 @@ const Newsletter = () => {
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        anchor="right"
         sx={{
           display: { xs: "block", md: "none" },
           "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" },

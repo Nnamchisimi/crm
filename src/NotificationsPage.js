@@ -155,6 +155,7 @@ const NotificationsPage = () => {
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        anchor="right"
         sx={{
           display: { xs: "block", md: "none" },
           "& .MuiDrawer-paper": { 

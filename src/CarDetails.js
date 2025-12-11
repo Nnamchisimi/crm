@@ -119,19 +119,23 @@ const renderTabContent = () => {
         case "Overview":
             return (
                 <>
-                    {/* UPCOMING MAINTENANCE */}
+                    {/* UPCOMING MAINTENANCE
                     <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
                         Upcoming Maintenance
                     </Typography>
+                     */}
                     <Paper
                         sx={{
                             // ... styling
                         }}
                     >
+                    
                         {/* Maintenance content */}
                     </Paper>
+                    
 
                     {/* ACTIVE CAMPAIGNS (This section is now visible only on the Campaigns tab) */}
+                     {/* 
                     <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
                         Active Campaigns
                     </Typography>
@@ -156,6 +160,7 @@ const renderTabContent = () => {
                     ) : (
                         <Typography>No active campaigns.</Typography>
                     )}
+                        */}
                 </>
             );
         case "Service History":
@@ -262,8 +267,8 @@ const renderTabContent = () => {
                     mb: 4,
                 }}
             >
-                 <Typography sx={{ fontWeight: "bold" }}>Phone Number</Typography>
-                 <Typography sx={{ color: "#00bcd4", mb: 1 }}>{vehicle.phone_number || "No Phone"} </Typography>
+                 {/*<Typography sx={{ fontWeight: "bold" }}>Phone Number</Typography>
+                 <Typography sx={{ color: "#00bcd4", mb: 1 }}>{vehicle.phone_number || "No Phone"} </Typography>*/}
                 <Typography sx={{ fontWeight: "bold" }}>VIN</Typography>
                 <Typography sx={{ mb: 2 }}>{vehicle.vin || "—"}</Typography>
                 <Typography sx={{ fontWeight: "bold" }}>Fuel Type</Typography>
@@ -278,7 +283,9 @@ const renderTabContent = () => {
 
             <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 4 }} />
 
-            {/* TABS UI (Now Functional) */}
+
+            
+            {/* TABS UI (Now Functional) 
             <Box sx={{ display: "flex", gap: 3, mb: 4 }}>
                 {["Overview", "Service History", "Campaigns", "Settings"].map((tab) => (
                     <Typography
@@ -296,6 +303,7 @@ const renderTabContent = () => {
                     </Typography>
                 ))}
             </Box>
+            */}
 
             {/* 5. ADDED: Render the content based on the active tab */}
             <Box>

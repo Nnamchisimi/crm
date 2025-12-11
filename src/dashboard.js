@@ -235,7 +235,7 @@ const getClosestDateCount = () => {
       </Box>
 
       {/* Mobile Drawer */}
-      <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}>
+      <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} anchor="right" sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}>
         {drawer}
       </Drawer>
 

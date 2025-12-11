@@ -185,6 +185,7 @@ const cancelCampaign = async (campaign, email) => {
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        anchor="right"
         sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}
       >
         {drawer}
@@ -232,7 +233,7 @@ const cancelCampaign = async (campaign, email) => {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <Paper sx={{ p: 3,  width: 360,  height: 190,  borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography variant="h6" fontWeight="bold">{c.title}</Typography>
+                    <Typography variant="h6" fontWeight="bold">{c.campaign_title}</Typography>
                     <Chip label={c.priority} sx={{ bgcolor: getPriorityColor(c.priority), color: "white" }} />
                   </Box>
                   <Typography sx={{ mb: 1 }}>{c.description}</Typography>
