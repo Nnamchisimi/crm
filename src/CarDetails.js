@@ -235,10 +235,13 @@ const renderTabContent = () => {
                 </Button>
             </Box>
 
+
             {/* Vehicle Header Info (Always visible) */}
-            <Typography variant="h5" sx={{ color: "#00bcd4", mb: 1 }}>
+       
+        {/*       <Typography variant="h5" sx={{ color: "#00bcd4", mb: 1 }}>
                 {vehicle.name || "Unknown Customer"}
             </Typography>
+              */}
 
             <Typography variant="h4" fontWeight="bold">
                 {vehicle.brand} {vehicle.model}

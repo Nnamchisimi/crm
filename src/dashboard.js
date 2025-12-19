@@ -346,9 +346,11 @@ const getClosestDateCount = () => {
         </Box>
       <Box>
     
-          <Typography variant="subtitle2" sx={{ color: "rgba(255,255,255,0.7)", mt: -0.5 }}>
+       {/*  
+        <Typography variant="subtitle2" sx={{ color: "rgba(255,255,255,0.7)", mt: -0.5 }}>
                   {vehicle.name || "Unknown Customer"}
           </Typography>
+          */}
         <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
           {vehicle.vehicle_type || "---"} • {vehicle.year || "---"} • {vehicle.license_plate || "---"}
         </Typography>
