@@ -1,19 +1,29 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
 
 const mysql = require("mysql2/promise");
 const { OAuth2Client } = require("google-auth-library");
-require("dotenv").config();
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// -------------------------------------------------------------
-// ⚙️ DATABASE AND AUTH CLIENT SETUP
-// -------------------------------------------------------------
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
@@ -25,9 +35,6 @@ const pool = mysql.createPool({
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
-// -------------------------------------------------------------
-// 🔒 MIDDLEWARE: verifyToken
-// -------------------------------------------------------------
 
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -49,9 +56,6 @@ const verifyToken = (req, res, next) => {
 };
 
 
-// -------------------------------------------------------------
-// 🏠 BASIC ROUTES
-// -------------------------------------------------------------
 
 app.get("/", (req, res) => {
     res.send("Backend is running!");
@@ -62,11 +66,9 @@ app.get("/api/health", (req, res) => {
 });
 
 
-// -------------------------------------------------------------
-// 🛠️ SERVICE ROUTES
-// -------------------------------------------------------------
 
-// GET /api/servicetype
+
+
 app.get("/api/servicetype", verifyToken, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -79,7 +81,6 @@ app.get("/api/servicetype", verifyToken, async (req, res) => {
     }
 });
 
-//branch route
 app.get("/api/branch", verifyToken,async(req,res)=>{
     try{
         const [rows] = await pool.query(
@@ -95,9 +96,8 @@ app.get("/api/branch", verifyToken,async(req,res)=>{
 
 });
 
-// GET /api/timeslots - Fetch available time slots for a given date, respecting the quota
 app.get("/api/timeslots", verifyToken, async (req, res) => {
-    const { date } = req.query; // Expected format: 'YYYY-MM-DD'
+    const { date } = req.query; 
 
     if (!date) {
         return res.status(400).json({ error: "Date parameter is required." });
@@ -105,14 +105,13 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
 
     try {
         const dateObj = new Date(date);
-        const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+        const dayOfWeek = dateObj.getDay(); 
 
-        // 1. Enforce Weekday Rule (Closed Saturday/Sunday)
+
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return res.json([]); // Return empty array for weekends
+            return res.json([]);
         }
 
-        // 2. Get the COUNT of booked appointments for EACH time slot on the given date
         const [bookedCounts] = await pool.query(
             `SELECT 
                 TIME_FORMAT(appointment_date, '%H:%i') AS slot_time, 
@@ -123,18 +122,15 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
             [date]
         );
         
-        // Convert bookedCounts array to a Map for O(1) lookup
         const bookedMap = new Map(bookedCounts.map(row => [row.slot_time, row.booked_count]));
 
-        // 3. Get ALL possible slots and their QUOTA from the time_slots table
         const [allSlotsRows] = await pool.query(
             "SELECT TIME_FORMAT(start_time, '%H:%i') AS slot_time, quota FROM time_slots ORDER BY start_time"
         );
 
-        // 4. Determine availability (quota logic)
         const allSlotsWithAvailability = allSlotsRows.map(row => {
             const slotTime = row.slot_time;
-            const slotQuota = row.quota || 20; // Use DB quota, fallback to 20 if needed
+            const slotQuota = row.quota || 20; 
             const bookedCount = bookedMap.get(slotTime) || 0;
             
             const remainingQuota = slotQuota - bookedCount;
@@ -146,7 +142,6 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
             };
         });
 
-        // Return the structured data containing availability and remaining quota
         res.json(allSlotsWithAvailability);
     } catch (err) {
         console.error("Error fetching time slots:", err);
@@ -155,11 +150,9 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
 });
 
 
-// -------------------------------------------------------------
-// 🚗 VEHICLE ROUTES
-// -------------------------------------------------------------
 
-// GET /api/vehicles - Fetch all vehicles for the logged-in user
+
+
 app.get("/api/vehicles", verifyToken, async (req, res) => {
     const userEmail = req.user.email;
 
@@ -176,7 +169,6 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
 });
 
 
-// GET /api/vehicles/:id - Fetch a single vehicle and relevant campaigns
 app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
     const { id } = req.params; 
     const userEmail = req.user.email;
@@ -186,7 +178,6 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
     }
 
     try {
-        // 1. Fetch Vehicle Details
         const [rows] = await pool.query(
             "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ? AND v.email = ?",
             [id, userEmail]
@@ -198,7 +189,6 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             return res.status(404).json({ message: "Vehicle not found or access denied" });
         }
 
-        // 2. Fetch Campaigns relevant to this vehicle and user
         const [campaignsRows] = await pool.query(`
             SELECT 
                 sc.id,
@@ -222,7 +212,6 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
         `, [userEmail, vehicle.brand, vehicle.model, vehicle.year]);
 
 
-        // 3. Format and Attach Campaigns to the vehicle object
         vehicle.activeCampaigns = campaignsRows.map(c => ({
             id: c.id,
             title: c.campaign_title,
@@ -233,7 +222,6 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             bookedByUser: !!c.bookedByUser
         })).filter(c => !c.bookedByUser); 
         
-        // 4. Send the merged object
         res.json(vehicle);
     } catch (err) {
         console.error(`❌ Error fetching vehicle ${id}:`, err);
@@ -242,10 +230,9 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
 });
 
 
-// PUT /api/vehicles/:id - Update an existing vehicle's details
 app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
     const { id } = req.params;
-    const userEmail = req.user.email; // Ensure the logged-in user owns the vehicle
+    const userEmail = req.user.email; 
     const {
         name,
         surname,
@@ -260,7 +247,6 @@ app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
         kilometers,
     } = req.body;
 
-    // Basic Validation (Check for required fields if needed, or rely on frontend validation)
     if (!name || !surname || !licensePlate || !brand || !model || !vehicleType || !fuelType || !year || kilometers === undefined) {
         return res.status(400).json({ message: "Missing required fields for update." });
     }
@@ -300,17 +286,14 @@ app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
         ]);
 
         if (result.affectedRows === 0) {
-            // This happens if the vehicle ID doesn't exist OR if the user doesn't own it
             return res.status(404).json({ message: "Vehicle not found or update unauthorized." });
         }
 
-        // Fetch the updated vehicle details to send back to the frontend
         const [updatedRows] = await pool.query(
             "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ?",
             [id]
         );
         
-        // The frontend expects the updated vehicle object on success
         res.json(updatedRows[0]); 
 
     } catch (error) {
@@ -321,7 +304,6 @@ app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
     }
 });
 
-// POST /api/vehicles - Register a new vehicle
 app.post("/api/vehicles", verifyToken, async (req, res) => {
     const {
         name,
@@ -347,7 +329,6 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
     }
 
     try {
-        // Check for duplicate VIN or license plate
         const [existing] = await pool.query(
             "SELECT * FROM vehicles WHERE vin = ? OR license_plate = ?",
             [vin, licensePlate]
@@ -359,7 +340,6 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
                 .json({ message: "Vehicle with this VIN or license plate already exists" });
         }
 
-        // Insert new vehicle
         const sql = `
             INSERT INTO vehicles
             (name, surname, phone_number, vin, license_plate, brand, model, vehicle_type, fuel_type, year, kilometers, email)
@@ -394,21 +374,11 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
 });
 
 
-// -------------------------------------------------------------
-// 🗓️ BOOKING ROUTES (MODIFIED & EXTENDED)
-// -------------------------------------------------------------
 
-// -------------------------------------------------------------
-// 🗓️ BOOKING ROUTES (MODIFIED & EXTENDED)
-// -------------------------------------------------------------
-
-// POST /api/bookings - Create a new appointment booking (uses logged-in user's name)
-// POST /api/bookings - Create a new appointment booking (uses logged-in user's name)
 app.post("/api/bookings", verifyToken, async (req, res) => {
     const customerEmail = req.user.email;
 
 
-    // Build customer_name automatically using JWT data
     let customerName = "";
     if (req.user.name && req.user.surname) {
         customerName = `${req.user.name} ${req.user.surname}`;
@@ -432,7 +402,6 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
     const bookingDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
     try {
-        // Validate time slot quota
         const [slotQuota] = await pool.query(
             "SELECT quota FROM time_slots WHERE TIME_FORMAT(start_time, '%H:%i') = ?",
             [appointmentTime]
@@ -454,7 +423,6 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
             });
         }
 
-        // Validate vehicle ownership
         const [vehicleCheck] = await pool.query(
             "SELECT id FROM vehicles WHERE id = ? AND email = ?",
             [vehicleId, customerEmail]
@@ -466,7 +434,6 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
             });
         }
 
-        // Insert booking
         const sql = `
             INSERT INTO bookings
             (customer_name, customer_email, booking_date, appointment_date, status, servicetype_id, vehicle_id, branch_id)
@@ -502,7 +469,6 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
 
 
 
-// GET /api/bookings - Fetch all bookings for the logged-in user
 app.get("/api/bookings", verifyToken, async (req, res) => {
     const customerEmail = req.user.email;
     try {
@@ -531,7 +497,6 @@ app.get("/api/bookings", verifyToken, async (req, res) => {
 });
 
 
-// POST /api/bookings/:id/cancel - Cancel an existing booking
 app.post("/api/bookings/:id/cancel", verifyToken, async (req, res) => {
     const bookingId = req.params.id;
     const customerEmail = req.user.email;
@@ -554,11 +519,7 @@ app.post("/api/bookings/:id/cancel", verifyToken, async (req, res) => {
 });
 
 
-// -------------------------------------------------------------
-// 🔑 AUTH ROUTES
-// -------------------------------------------------------------
 
-// POST /api/auth/google
 app.post("/api/auth/google", async (req, res) => {
     try {
         const { id_token, username, name, surname, phoneNumber } = req.body;
@@ -579,7 +540,6 @@ app.post("/api/auth/google", async (req, res) => {
             [google_id, email]
         );
 
-        // --- 1. HANDLE SIGNUP ---
         if (existing.length === 0) {
             await pool.query(
                 `INSERT INTO users 
@@ -594,21 +554,19 @@ app.post("/api/auth/google", async (req, res) => {
                 [email]
             );
         } else {
-            console.log(`✅ Google user already exists: ${email}`);
+            console.log(` Google user already exists: ${email}`);
         }
 
         const user = existing[0];
 
-        // --- 2. GENERATE JWT ---
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role , name: user.name , surname : user.surname}, 
             process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1h" }
         );
 
-        console.log("✅ Google user logged in:", user.email,user.name,user.surname);
+        console.log("Google user logged in:", user.email,user.name,user.surname);
 
-        // --- 3. SEND RESPONSE WITH JWT ---
         res.json({ 
             success: true, 
             token, 
@@ -625,106 +583,178 @@ app.post("/api/auth/google", async (req, res) => {
 });
 
 
-// POST /api/auth/signup
+const crypto = require("crypto");
+
+
 app.post("/api/auth/signup", async (req, res) => {
     try {
-        const { name, surname, phoneNumber, email, username, password, is_verified } = req.body;
+        const { name, surname, phoneNumber, email, username, password } = req.body;
 
-        if (!name || !surname || !email || !username || (!password && !is_verified)) {
+        if (!name || !surname || !email || !username || !password) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
         const [existing] = await pool.query(
-            "SELECT * FROM users WHERE email = ? OR username = ?",
+            "SELECT id FROM users WHERE email = ? OR username = ?",
             [email, username]
         );
         if (existing.length > 0) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        let hashedPassword = null;
-        if (password) {
-            const salt = await bcrypt.genSalt(10);
-            hashedPassword = await bcrypt.hash(password, salt);
-        }
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        const sql = `
-            INSERT INTO users (name, surname, username, email, phone_number, password, is_verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
+        const token = crypto.randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 60 * 60 * 1000); 
 
-        const [result] = await pool.execute(sql, [
-            name,
-            surname,
-            username,
-            email,
-            phoneNumber || null,
-            hashedPassword,
-            is_verified || 0,
-        ]);
-
-        res.status(201).json({ success: true, userId: result.insertId });
-    } catch (err) {
-        console.error("Signup error:", err);
-        res.status(500).json({ message: err.message || "Internal server error" });
-    }
-});
-
-
-// POST /api/auth/signin
-app.post("/api/auth/signin", async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        console.log("🔍 Signin request:", req.body);
-
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password required" });
-        }
-
-        const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-
-        if (users.length === 0) {
-            return res.status(401).json({ message: "User not found" });
-        }
-
-        const user = users[0];
-
-        const match = await bcrypt.compare(password, user.password);
-
-        if (!match) {
-            return res.status(401).json({ message: "Incorrect password" });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role, name: user.name, surname: user.surname }, 
-            process.env.JWT_SECRET || "supersecretkey",
-            { expiresIn: "1h" }
+        await pool.execute(
+            `INSERT INTO users 
+            (name, surname, username, email, phone_number, password, is_verified, email_verification_token, email_verification_expires)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+            [
+                name,
+                surname,
+                username,
+                email,
+                phoneNumber || null,
+                hashedPassword,
+                token,
+                expires
+            ]
         );
 
-        console.log("✅ User logged in:", user.email, user.name, user.surname);
+        const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-        res.json({
+        await transporter.sendMail({
+            from: `"CRM App" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: "Verify your email",
+            html: `
+              <h3>Verify your email</h3>
+              <p>Please click the link below to activate your account:</p>
+              <a href="${verifyUrl}">Verify Email</a>
+              <p>This link expires in 1 hour.</p>
+            `
+        });
+
+        res.status(201).json({
             success: true,
-            token,
-            role: user.role,
-            email: user.email,
-            name: user.name,
-            surname: user.surname,
+            message: "Signup successful. Please check your email to verify your account."
         });
 
     } catch (err) {
-        console.error("❌ SIGNIN ERROR:", err);
+        console.error("Signup error:", err);
         res.status(500).json({ message: "Internal server error" });
     }
 });
 
+app.post("/api/auth/verify-email", async (req, res) => {
+  const { token } = req.body;
 
-// -------------------------------------------------------------
-// 📢 CAMPAIGN & NEWSLETTER ROUTES
-// -------------------------------------------------------------
+    
+  if (!token) {
+    return res.status(400).json({ message: "Missing token" });
+  }
 
-// POST /api/newsletter - Subscribe/Update newsletter preferences
+  console.log("Token received for verification:", token);
+  const [users] = await pool.query(
+    `SELECT id, is_verified, email_verification_expires
+     FROM users
+     WHERE email_verification_token = ?`,
+    [token]
+  );
+  console.log("Users found:", users);
+
+  
+
+  if (users.length === 0) {
+    return res.status(400).json({ message: "Invalid verification token" });
+  }
+
+  const user = users[0];
+
+  if (user.is_verified) {
+    return res.status(400).json({ message: "Email already verified" });
+  }
+
+  if (new Date(user.email_verification_expires) < new Date()) {
+    return res.status(400).json({ message: "Verification link expired" });
+  }
+
+  await pool.execute(
+    `UPDATE users
+     SET is_verified = 1,
+         email_verification_token = NULL,
+         email_verification_expires = NULL
+     WHERE id = ?`,
+    [user.id]
+  );
+
+  res.json({ success: true, message: "Email verified successfully" });
+});
+
+
+
+app.post("/api/auth/signin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    const [users] = await pool.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const user = users[0]; 
+
+    if (!user.is_verified) {
+      return res.status(403).json({
+        message: "Please verify your email before logging in"
+      });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        surname: user.surname
+      },
+      process.env.JWT_SECRET || "supersecretkey",
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      surname: user.surname
+    });
+
+  } catch (err) {
+    console.error(" SIGNIN ERROR:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
 app.post("/api/newsletter", async (req, res) => {
     try {
         const { email, phone, notifications, preferences } = req.body;
@@ -766,7 +796,6 @@ app.post("/api/newsletter", async (req, res) => {
     }
 });
 
-// POST /api/newsletter/send - Admin route to send a newsletter to all subscribers
 app.post("/api/newsletter/send", async (req, res) => {
     const { subject, content } = req.body;
 
@@ -777,7 +806,6 @@ app.post("/api/newsletter/send", async (req, res) => {
             console.log(`Sending newsletter to ${user.email}`);
         });
 
-        // Log notification for each user (simulating email sending)
         for (const user of subscribers) {
             await pool.query(
                 "INSERT INTO notifications (user_email, type, title, message) VALUES (?, 'Newsletter', ?, ?)",
@@ -792,7 +820,6 @@ app.post("/api/newsletter/send", async (req, res) => {
     }
 });
 
-// GET /api/campaigns - Fetch all campaigns and check user booking status
 app.get("/api/campaigns", async (req, res) => {
     const { email } = req.query;
 
@@ -844,7 +871,6 @@ app.get("/api/campaigns", async (req, res) => {
 });
 
 
-// POST /api/campaigns/:id/book - Book a specific campaign for a user
 app.post("/api/campaigns/:id/book", async (req, res) => {
     const { email } = req.body;
     const { id } = req.params;
@@ -852,7 +878,6 @@ app.post("/api/campaigns/:id/book", async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email required" });
 
     try {
-        // Check if the user already has an active booking for this campaign
         const [existing] = await pool.execute(
             "SELECT * FROM user_campaigns WHERE campaign_id = ? AND user_email = ? AND status = 'active'",
             [id, email.trim().toLowerCase()]
@@ -862,7 +887,6 @@ app.post("/api/campaigns/:id/book", async (req, res) => {
             return res.status(400).json({ message: "You already booked this campaign" });
         }
 
-        // Insert new active booking
         await pool.execute(
             "INSERT INTO user_campaigns (campaign_id, user_email, status) VALUES (?, ?, 'active')",
             [id, email.trim().toLowerCase()]
@@ -876,7 +900,6 @@ app.post("/api/campaigns/:id/book", async (req, res) => {
 });
 
 
-// POST /api/campaigns/:id/cancel - Cancel a campaign booking
 app.post("/api/campaigns/:id/cancel", async (req, res) => {
     const { email } = req.body;
     const { id } = req.params;
@@ -903,7 +926,6 @@ app.post("/api/campaigns/:id/cancel", async (req, res) => {
 });
 
 
-// POST /api/campaigns - Create a new campaign (Admin use)
 app.post("/api/campaigns", async (req, res) => {
     const {
         campaign_title,
@@ -917,7 +939,6 @@ app.post("/api/campaigns", async (req, res) => {
         valid_until,
     } = req.body;
 
-    // Basic validation
     if (!campaign_title || !description || !maintenance_type || !priority) {
         return res.status(400).json({ message: "Required fields missing." });
     }
@@ -946,24 +967,20 @@ app.post("/api/campaigns", async (req, res) => {
             id: result.insertId,
         });
     } catch (error) {
-        console.error("❌ Campaign insert error:", error);
+        console.error(" Campaign insert error:", error);
         res.status(500).json({
             message: error.sqlMessage || error.message || "Internal server error",
         });
     }
 });
 
-// -------------------------------------------------------------
-// 🛑 SERVER START & 404
-// -------------------------------------------------------------
 
-// Catch-all 404 handler for any undefined routes
+
 app.use((req, res) => {
     res.status(404).json({ message: "Route not found" });
 });
 
-// Start server
 const PORT = process.env.PORT || 3007;
 app.listen(PORT, () => {
-    console.log(`✅ Backend running on http://localhost:${PORT}`);
+    console.log(`Backend running on http://localhost:${PORT}`);
 });

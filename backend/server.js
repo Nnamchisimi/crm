@@ -8,7 +8,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ MySQL connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
@@ -18,20 +17,16 @@ const pool = mysql.createPool({
 
 
 
-// ✅ Google OAuth client
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// ✅ Default GET route
 app.get("/", (req, res) => {
-  res.send("✅ Backend is running!");
+  res.send("Backend is running!");
 });
 
-// ✅ Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date() });
 });
 
-// ✅ Google login/signup route
 app.post("/api/auth/google", async (req, res) => {
   try {
     const { id_token } = req.body;
@@ -58,18 +53,17 @@ app.post("/api/auth/google", async (req, res) => {
         "INSERT INTO users (username, email, google_id, is_verified) VALUES (?, ?, ?, ?)",
         [username, email, google_id, is_verified]
       );
-      console.log(`🆕 New Google user inserted: ${email}`);
+      console.log(` New Google user inserted: ${email}`);
     } else {
-      console.log(`✅ Google user already exists: ${email}`);
+      console.log(`Google user already exists: ${email}`);
     }
 
     res.json({ success: true, email, username });
   } catch (err) {
-    console.error("❌ Google login error:", err);
+    console.error(" Google login error:", err);
     res.status(500).json({ error: "Google login failed" });
   }
 });
-// GET all vehicles
 app.get("/api/vehicles", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM vehicles");
@@ -81,7 +75,6 @@ app.get("/api/vehicles", async (req, res) => {
 });
 
 
-// ✅ Add Vehicle route
 app.post("/api/vehicles", async (req, res) => {
   const { vin, licensePlate, brand, model, vehicleType, fuelType, year, kilometers } = req.body;
 
@@ -124,8 +117,6 @@ app.post("/api/vehicles", async (req, res) => {
     });
   }
 });
-
-// ✅ Catch-all 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
