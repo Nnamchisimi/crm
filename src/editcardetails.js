@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Typography, Box } from '@mui/material';
 
-// --- Data Definitions (Should match AddVehicle for consistency) ---
 const carModels = {
     "Chrysler": ["300 C", "300 M", "Concorde", "Crossfire", "LHS", "Neon", "PT Cruiser", "Sebring", "Stratus"],
     "Audi": [
@@ -67,7 +66,7 @@ const carModels = {
 const vehicleTypes = ["Sedan", "SUV", "Truck", "Van", "Coupe", "Hatchback"];
 const fuelTypes = ["Petrol", "Diesel", "Electric", "Hybrid"];
 const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 26 }, (_, i) => String(currentYear - i)).reverse(); // 1999 to current year
+const years = Array.from({ length: 26 }, (_, i) => String(currentYear - i)).reverse();
 
 
 const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
@@ -75,7 +74,6 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
     const [errors, setErrors] = useState({});
     const availableModels = carModels[formData.brand] || [];
 
-    // Load vehicle data into form state when the component receives a 'vehicle' prop
     useEffect(() => {
         if (vehicle) {
             setFormData({
@@ -86,7 +84,6 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
                 licensePlate: vehicle.license_plate || '',
                 brand: vehicle.brand || '',
                 model: vehicle.model || '',
-                // Use normalized keys from the parent component or fallback to old keys
                 vehicleType: vehicle.vehicle_type|| '', 
                 fuelType: vehicle.fuelType || vehicle.fuel_type || '', 
                 year: vehicle.year || '',
@@ -98,7 +95,6 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         
-        // Reset model if brand changes
         if (name === "brand") {
             setFormData(prev => ({ ...prev, brand: value, model: "" }));
         } else {
@@ -131,7 +127,7 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
 
         try {
             const response = await fetch(`http://localhost:3007/api/vehicles/${vehicle.id}`, {
-                method: 'PUT', // 💡 Use PUT for updating an existing resource
+                method: 'PUT', 
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
@@ -143,7 +139,6 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
 
             if (response.ok) {
                 alert("Vehicle updated successfully!");
-                // Call the callback to update the parent component's state
                 onUpdate(result); 
                 handleClose();
             } else {
@@ -155,10 +150,8 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
         }
     };
     
-    // Prevent rendering the modal if vehicle data hasn't loaded yet
     if (!vehicle) return null; 
 
-    // Helper for input styling consistency
     const inputStyle = { input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#ccc' }, '&:hover fieldset': { borderColor: '#00bcd4' }, '&.Mui-focused fieldset': { borderColor: '#00bcd4' } } };
 
     return (
@@ -171,18 +164,15 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
             <DialogContent>
                 <Box component="form" sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     
-                    {/* Customer Details */}
                     <Typography variant="h6" sx={{ color: '#00bcd4' }}>Customer Info</Typography>
                     <TextField label="Name" name="name" value={formData.name || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle} />
                     <TextField label="Surname" name="surname" value={formData.surname || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle} />
                     <TextField label="Phone Number" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle} />
                     
-                    {/* Vehicle Details */}
                     <Typography variant="h6" sx={{ color: '#00bcd4', mt: 2 }}>Vehicle Info</Typography>
                     <TextField label="VIN Number" name="vin" value={formData.vin || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle} />
                     <TextField label="License Plate" name="licensePlate" value={formData.licensePlate || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle} />
                     
-                    {/* Brand/Model/Type/Fuel Selects */}
                     <TextField select label="Brand" name="brand" value={formData.brand || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle}>
                         {Object.keys(carModels).map((brand) => (<MenuItem key={brand} value={brand}>{brand}</MenuItem>))}
                     </TextField>
@@ -196,7 +186,6 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
                         {fuelTypes.map((fuel) => (<MenuItem key={fuel} value={fuel}>{fuel}</MenuItem>))}
                     </TextField>
 
-                    {/* Year and Kilometers */}
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <TextField select label="Year" name="year" value={formData.year || ''} onChange={handleChange} fullWidth InputLabelProps={{ style: { color: '#ccc' } }} sx={inputStyle}>
                             {years.map((year) => (<MenuItem key={year} value={year}>{year}</MenuItem>))}

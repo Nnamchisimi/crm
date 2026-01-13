@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import {
   Box,
   Typography,
@@ -27,29 +27,35 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { jwtDecode } from "jwt-decode";
 
 const Newsletter = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
 
-  // Get logged-in user's email from localStorage
+
   const loggedInEmail = localStorage.getItem("userEmail") || "";
+     const handleSignOut = () => {
+
+        localStorage.removeItem("token");
+        localStorage.removeItem("userEmail");
+        sessionStorage.clear();
+
+        navigate("/signin", { replace: true });
+      };
 
 
-  // Form state (email is not editable)
   const [formData, setFormData] = useState({
     phone: "",
     notifications: { email: true, sms: true, phone: true },
     preferences: { weeklyDigest: true, monthlyOffers: true, reminders: true },
   });
 
-  // Handle text input changes (phone)
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle notification checkboxes
   const handleNotificationChange = (key) => {
     setFormData({
       ...formData,
@@ -60,7 +66,6 @@ const Newsletter = () => {
     });
   };
 
-  // Handle content preferences checkboxes
   const handlePreferenceChange = (key) => {
     setFormData({
       ...formData,
@@ -70,8 +75,22 @@ const Newsletter = () => {
       },
     });
   };
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    navigate("/signin", { replace: true });
+    return;
+  }
 
-  // Submit form
+  const { role } = jwtDecode(token);
+  if (role !== "user") {
+    navigate("/signin", { replace: true });
+  }
+}, [navigate]);
+
+
+
+  
   const handleSubmit = async () => {
     if (!loggedInEmail) {
       alert("You must be logged in to subscribe.");
@@ -102,7 +121,6 @@ const Newsletter = () => {
       alert("Server error, please try again.");
     }
 
-    // Reset form except email
     setFormData({
       phone: "",
       notifications: { email: true, sms: false, phone: false },
@@ -110,15 +128,14 @@ const Newsletter = () => {
     });
   };
 
-  // Sidebar items
   const sidebarItems = [
-    { text: "Home", icon: <HomeIcon />, path: "/" },
+
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
-    { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
      { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
+      { text: "Sign Out", icon: <ExitToAppIcon />, onClick:handleSignOut}
   ];
 
   const drawer = (
@@ -136,15 +153,20 @@ const Newsletter = () => {
         AutoCRM
       </Typography>
       <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-      <List>
+     <List>
         {sidebarItems.map((item, idx) => (
           <ListItem
             key={idx}
             button
-            sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
+            sx={{ color: item.path === '/newsletter' ? '#00bcd4' : '#ccc',  "&:hover": { color: "#00bcd4" }  }}
             onClick={() => {
-              navigate(item.path);
-              setMobileOpen(false);
+              if (item.onClick) {
+         
+                item.onClick();
+              } else if (item.path) {
+                navigate(item.path);
+              }
+              setMobileOpen(false); 
             }}
           >
             {item.icon}
@@ -152,6 +174,7 @@ const Newsletter = () => {
           </ListItem>
         ))}
       </List>
+
     </Box>
   );
 
@@ -164,7 +187,6 @@ const Newsletter = () => {
         minHeight: "100vh",
       }}
     >
-      {/* Mobile Hamburger */}
       <Box
         sx={{
           position: "fixed",
@@ -179,7 +201,6 @@ const Newsletter = () => {
         </IconButton>
       </Box>
 
-      {/* Mobile Drawer */}
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
@@ -192,7 +213,6 @@ const Newsletter = () => {
         {drawer}
       </Drawer>
 
-      {/* Desktop Sidebar */}
       <Box
         sx={{
           width: 250,
@@ -206,7 +226,6 @@ const Newsletter = () => {
       </Box>
 
 
-      {/* Main Content */}
       <Box sx={{ flex: 1, p: 4 }}>
                <Button
                                     onClick={() => navigate("/dashboard")}
@@ -243,7 +262,6 @@ const Newsletter = () => {
           special offers.
         </Typography>
 
-        {/* Newsletter Form */}
         <Grid container justifyContent="center" sx={{ mb: 4 }}>
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
@@ -264,7 +282,6 @@ const Newsletter = () => {
                   Stay informed about the latest offers and service campaigns.
                 </Typography>
 
-                {/* Display email (read-only) */}
                 <TextField
                   label="Email Address"
                   variant="outlined"
@@ -299,7 +316,6 @@ const Newsletter = () => {
                   }}
                 />
 
-                {/* Notification Preferences */}
                 <Typography variant="h6" gutterBottom>
                   Notification Preferences
                 </Typography>
@@ -336,7 +352,6 @@ const Newsletter = () => {
                   />
                 </FormGroup>
 
-                {/* Content Preferences */}
                 <Typography variant="h6" sx={{ mt: 3 }} gutterBottom>
                   Content Preferences
                 </Typography>
@@ -390,7 +405,6 @@ const Newsletter = () => {
           </Grid>
         </Grid>
 
-        {/* What You'll Receive */}
         <Grid container justifyContent="center">
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>

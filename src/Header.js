@@ -38,7 +38,7 @@ const Header = () => {
 
   const handleNavigate = (path) => {
     navigate(path);
-    setMobileOpen(false); // close drawer on mobile after clicking
+    setMobileOpen(false); 
   };
 
   const drawer = (
@@ -64,12 +64,10 @@ const Header = () => {
           alignItems: "center",
         }}
       >
-        {/* Logo */}
         <Typography variant="h6" sx={{ fontWeight: "bold", cursor: "pointer" }} onClick={() => navigate("/")}>
-          AutoCRM
+          KombosDMS
         </Typography>
 
-        {/* Desktop navigation */}
         {!isMobile && (
           <Box sx={{ display: "flex", gap: 2, flexGrow: 1, justifyContent: "center" }}>
             {navItems.map((item) => (
@@ -84,7 +82,6 @@ const Header = () => {
           </Box>
         )}
 
-        {/* Mobile Hamburger */}
         {isMobile ? (
           <IconButton color="inherit" edge="end" onClick={handleDrawerToggle}>
             <MenuIcon />
@@ -107,7 +104,6 @@ const Header = () => {
           </Button>
         )}
 
-        {/* Drawer */}
         <Drawer anchor="right" open={mobileOpen} onClose={handleDrawerToggle}>
           {drawer}
         </Drawer>

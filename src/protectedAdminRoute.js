@@ -2,7 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 const ProtectedAdminRoute = ({ children, setSnackbar }) => {
-  const role = localStorage.getItem("userRole"); // read role from localStorage
+  const role = localStorage.getItem("userRole"); 
 
   if (role !== "admin") {
     if (setSnackbar) {

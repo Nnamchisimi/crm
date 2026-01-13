@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
@@ -32,8 +33,32 @@ const CampaignsPage = () => {
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+    const handleSignOut = () => {
 
-  const userEmail = localStorage.getItem("userEmail"); // Logged-in user email
+        localStorage.removeItem("token");
+        localStorage.removeItem("userEmail");
+        sessionStorage.clear();
+
+        navigate("/signin", { replace: true });
+      };
+
+  const userEmail = localStorage.getItem("userEmail"); 
+    
+   useEffect(() => {
+     const token = localStorage.getItem("token");
+     if (!token) {
+       navigate("/signin", { replace: true });
+       return;
+     }
+   
+     const { role } = jwtDecode(token);
+     if (role !== "user") {
+       navigate("/signin", { replace: true });
+     }
+   }, [navigate]);
+   
+   
+
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -51,8 +76,8 @@ const CampaignsPage = () => {
           model: c.model_filter,
           year: c.year_filter,
           discount: c.discount_percent ? `${c.discount_percent}% OFF` : null,
-          validUntil: c.validUntil, // use backend-formatted date
-          bookedByUser: !!c.bookedByUser, // <-- use backend's flag 
+          validUntil: c.validUntil,
+          bookedByUser: !!c.bookedByUser,
         }));
 
         setActiveCampaigns(mapped.filter(c => c.bookedByUser));
@@ -88,7 +113,6 @@ const bookCampaign = async (campaign) => {
       return alert(result.message || "Failed to book campaign");
     }
 
-    // Remove from allCampaigns and add to activeCampaigns
     setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
 
     setActiveCampaigns(prev => [
@@ -115,10 +139,8 @@ const cancelCampaign = async (campaign, email) => {
 
     if (!res.ok) return alert(result.message);
 
-    // Remove from active campaigns
     setActiveCampaigns(prev => prev.filter(c => c.id !== campaign.id));
 
-    // Add back to available campaigns
     setAllCampaigns(prev => [...prev, { ...campaign, bookedByUser: false }]);
 
   } catch (err) {
@@ -129,13 +151,13 @@ const cancelCampaign = async (campaign, email) => {
 
 
   const sidebarItems = [
-    { text: "Home", icon: <HomeIcon />, path: "/" },
+
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
-    { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
      { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
+      { text: "Sign Out", icon: <ExitToAppIcon />, onClick:handleSignOut },
   ];
 
   const drawer = (
@@ -150,22 +172,31 @@ const cancelCampaign = async (campaign, email) => {
           WebkitTextFillColor: "transparent",
         }}
       >
-        AutoCRM
+        KombosDMS
       </Typography>
       <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-      <List>
-        {sidebarItems.map((item, idx) => (
-          <ListItem
-            key={idx}
-            button
-            sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
-            onClick={() => { navigate(item.path); setMobileOpen(false); }}
-          >
-            {item.icon}
-            <ListItemText primary={item.text} sx={{ ml: 2 }} />
-          </ListItem>
-        ))}
-      </List>
+        <List>
+             {sidebarItems.map((item, idx) => (
+               <ListItem
+                 key={idx}
+                 button
+                 sx={{ color: item.path === '/campaigns' ? '#00bcd4' : '#ccc',  "&:hover": { color: "#00bcd4" }  }}
+                 onClick={() => {
+                   if (item.onClick) {
+                   
+                     item.onClick();
+                   } else if (item.path) {
+                    
+                     navigate(item.path);
+                   }
+                   setMobileOpen(false); 
+                 }}
+               >
+                 {item.icon}
+                 <ListItemText primary={item.text} sx={{ ml: 2 }} />
+               </ListItem>
+             ))}
+           </List>
     </Box>
   );
 
@@ -173,7 +204,6 @@ const cancelCampaign = async (campaign, email) => {
     
     <Box sx={{ display: "flex", minHeight: "100vh", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white" }}>
       
-      {/* Mobile Hamburger */}
       <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
         
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -181,7 +211,6 @@ const cancelCampaign = async (campaign, email) => {
         </IconButton>
       </Box>
 
-      {/* Drawer */}
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
@@ -191,12 +220,10 @@ const cancelCampaign = async (campaign, email) => {
         {drawer}
       </Drawer>
       
-      {/* Desktop Sidebar */}
       <Box sx={{ width: 250, background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", p: 3, display: { xs: "none", md: "block" } }}>
         {drawer}
       </Box>
 
-      {/* Main content */}
       
       <Box component="main" sx={{ flexGrow: 1, p: 4, ml: { sm: `${drawerWidth}px` } }}>
           <Button
@@ -224,7 +251,6 @@ const cancelCampaign = async (campaign, email) => {
           Active campaigns and all available campaigns for your vehicles
         </Typography>
 
-        {/* Active Campaigns */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>Your Active Campaigns</Typography>
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {activeCampaigns.length === 0 && <Typography>No active campaigns currently.</Typography>}
@@ -250,7 +276,6 @@ const cancelCampaign = async (campaign, email) => {
 
         <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.2)" }} />
 
-        {/* Available Campaigns */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>All Available Campaigns</Typography>
         <Grid container spacing={3}>
           {allCampaigns.map(c => (

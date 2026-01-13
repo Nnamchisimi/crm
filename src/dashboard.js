@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+
 
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
@@ -32,36 +34,41 @@ const Dashboard = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [vehicles, setVehicles] = useState([]);
 
-  const userToken = localStorage.getItem("token"); // <-- New
-  // Campaign states
+  const userToken = localStorage.getItem("token"); 
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
   const userEmail = localStorage.getItem("userEmail");
   const userName = localStorage.getItem("userName");
-  
-  // Calculate upcoming bookings based on campaign.validUntil
-// Count how many campaigns share the closest validUntil date
+
+    const handleSignOut = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userEmail");
+  localStorage.removeItem("userName");
+  sessionStorage.clear();
+
+  navigate("/signin", { replace: true });
+};
+
+
+
+
 const getClosestDateCount = () => {
   if (!activeCampaigns.length) return 0;
 
-  // Convert validUntil to Date objects
   const dates = activeCampaigns
     .map(c => new Date(c.validUntil))
     .filter(d => !isNaN(d));
 
   if (!dates.length) return 0;
 
-  // Find the closest (minimum) date
   const closestDate = new Date(Math.min(...dates));
 
-  // Count how many campaigns have exactly this date
   const count = dates.filter(d => d.getTime() === closestDate.getTime()).length;
 
   return count;
 };
 
 
-  // Stats
   const stats = [
     { title: "Total Vehicles", value: vehicles.length },
     { title: "Upcoming Bookings", value: getClosestDateCount() },
@@ -69,8 +76,23 @@ const getClosestDateCount = () => {
   ];
 
 
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    navigate("/signin", { replace: true });
+    return;
+  }
+
+  const { role } = jwtDecode(token);
+  if (role !== "user") {
+    navigate("/signin", { replace: true });
+  }
+}, [navigate]);
+
+
+
+
   
- // Fetch vehicles (SECURED)
   useEffect(() => {
     const fetchVehicles = async () => {
       if (!userToken) {
@@ -82,7 +104,7 @@ const getClosestDateCount = () => {
       try {
         const res = await fetch("http://localhost:3007/api/vehicles", {
           headers: {
-            "Authorization": `Bearer ${userToken}`, // <-- 🔑 SECURITY: Add JWT
+            "Authorization": `Bearer ${userToken}`,
           },
         });
         
@@ -106,7 +128,6 @@ const getClosestDateCount = () => {
     fetchVehicles();
   }, [userToken, navigate]);
 
-  // Fetch campaigns (SECURED)
   useEffect(() => {
     const fetchCampaigns = async () => {
       if (!userEmail || !userToken) return;
@@ -114,7 +135,7 @@ const getClosestDateCount = () => {
       try {
         const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`, {
           headers: {
-            "Authorization": `Bearer ${userToken}`, // <-- 🔑 SECURITY: Add JWT
+            "Authorization": `Bearer ${userToken}`,
           },
         });
 
@@ -181,19 +202,22 @@ const getClosestDateCount = () => {
     }
   };
 
-  // Sidebar items
+
   const sidebarItems = [
-    { text: "Home", icon: <HomeIcon />, path: "/" },
+
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
-
-  { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
-    { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+     { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
+    { text: "Sign Out", icon: <ExitToAppIcon />, onClick: handleSignOut },
     
-
   ];
+
+
+  
+
+
 
   const drawer = (
     <Box sx={{ width: 250, p: 3 }}>
@@ -203,7 +227,7 @@ const getClosestDateCount = () => {
         gutterBottom
         sx={{ background: "linear-gradient(90deg, #fff, #00bcd4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
       >
-        AutoCRM
+        KombosDMS
       </Typography>
       <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
       <List>
@@ -211,10 +235,16 @@ const getClosestDateCount = () => {
           <ListItem
             key={idx}
             button
-            sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
+            sx={{ color: item.path === '/dashboard' ? '#00bcd4' : '#ccc',  "&:hover": { color: "#00bcd4" }  }}
             onClick={() => {
-              navigate(item.path);
-              setMobileOpen(false);
+              if (item.onClick) {
+              
+                item.onClick();
+              } else if (item.path) {
+               
+                navigate(item.path);
+              }
+              setMobileOpen(false); 
             }}
           >
             {item.icon}
@@ -222,29 +252,26 @@ const getClosestDateCount = () => {
           </ListItem>
         ))}
       </List>
+
     </Box>
   );
 
   return (
     <Box sx={{ display: "flex", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white", minHeight: "100vh" }}>
-      {/* Mobile Hamburger */}
       <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
           <MenuIcon />
         </IconButton>
       </Box>
 
-      {/* Mobile Drawer */}
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} anchor="right" sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" } }}>
         {drawer}
       </Drawer>
 
-      {/* Desktop Sidebar */}
       <Box sx={{ width: 250, background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", p: 3, display: { xs: "none", md: "block" } }}>
         {drawer}
       </Box>
 
-      {/* Main Content */}
       <Box sx={{ flexGrow: 1, p: 4 }}>
       
         <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -266,7 +293,6 @@ const getClosestDateCount = () => {
         </Typography>
         
 
-        {/* Stats */}
         <Grid container spacing={3}>
           {stats.map((stat, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
@@ -280,7 +306,6 @@ const getClosestDateCount = () => {
           ))}
         </Grid>
 
-        {/* My Vehicles Section */}
         <Box mt={6}>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             My Vehicles
@@ -333,7 +358,7 @@ const getClosestDateCount = () => {
     >
       
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                 <BrandLogo brand={vehicle.brand} size="lg" showName={false} /> {/* Display only the logo, large size */}
+                 <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
                                         <Box sx={{ ml: 1 }}>
                                             <Typography variant="h6" fontWeight="bold" sx={{ m: 0 }}>
                                                 {vehicle.brand || "---"} {vehicle.model || "---"}
@@ -381,7 +406,6 @@ const getClosestDateCount = () => {
           </Box>
         </Box>
 
-        {/* Recent Bookings Section */}
         <Box mt={6}>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             Recent Bookings
@@ -390,7 +414,7 @@ const getClosestDateCount = () => {
                 {activeCampaigns.map((c) => (
                   <Grid item xs={12} md={6} key={c.id}>
                     <Paper
-                             onClick={() => navigate("/campaigns")} // redirect to campaigns page
+                             onClick={() => navigate("/campaigns")}
                       sx={{
                         p: 3,
                         borderRadius: 3,

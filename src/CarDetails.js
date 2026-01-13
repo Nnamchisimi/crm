@@ -8,15 +8,11 @@ const CarDetails = () => {
     const navigate = useNavigate();
     const [vehicle, setVehicle] = useState(null);
     const [error, setError] = useState(null);
-    // 1. ADDED: State to track the active tab
     const [activeTab, setActiveTab] = useState("Overview"); 
 
-    // State to control the Edit Modal
     const [isEditCarOpen, setIsEditCarOpen] = useState(false);
 
-    // Function to handle the update from the modal
     const handleVehicleUpdate = (updatedData) => {
-        // This function runs when the EditModal successfully saves data
         setVehicle(updatedData);
     };
 
@@ -43,7 +39,6 @@ const CarDetails = () => {
                 throw new Error(`Failed to load vehicle. Server returned status: ${res.status}`);
             }
             const data = await res.json();
-            // Ensure data structure compatibility (backend might use fuel_type/type)
             const normalizedData = {
                 ...data,
                 fuelType: data.fuelType || data.fuel_type,
@@ -94,7 +89,6 @@ const CarDetails = () => {
 
     }, [id, navigate]);
 
-    // Conditional Renders (Loading and Error checks)
     if (error) {
         return (
             <Typography color="error" sx={{ p: 5 }}>
@@ -111,8 +105,6 @@ const CarDetails = () => {
         );
     }
     
-    // 2. ADDED: Helper function to render content based on the active tab
-// Inside the CarDetails component...
 
 const renderTabContent = () => {
     switch (activeTab) {
@@ -218,7 +210,6 @@ const renderTabContent = () => {
                 ← Back to Dashboard
             </Button>
 
-            {/* Edit Details Button */}
                 <Button 
                     variant="outlined" 
                     onClick={() => setIsEditCarOpen(true)}
@@ -236,7 +227,7 @@ const renderTabContent = () => {
             </Box>
 
 
-            {/* Vehicle Header Info (Always visible) */}
+            {/* Vehicle Header Info */}
        
         {/*       <Typography variant="h5" sx={{ color: "#00bcd4", mb: 1 }}>
                 {vehicle.name || "Unknown Customer"}
@@ -260,7 +251,7 @@ const renderTabContent = () => {
 
             <Chip label="active" sx={{ bgcolor: "green", color: "white", mb: 4 }} />
 
-            {/* VEHICLE DETAILS BOX (Always visible) */}
+            {/* VEHICLE DETAILS BOX */}
             <Paper
                 sx={{
                     p: 3,
@@ -308,12 +299,10 @@ const renderTabContent = () => {
             </Box>
             */}
 
-            {/* 5. ADDED: Render the content based on the active tab */}
             <Box>
                 {renderTabContent()}
             </Box>
 
-            {/* The Edit Modal Component */}
             {vehicle && (
                 <EditCarDetails
                     open={isEditCarOpen}

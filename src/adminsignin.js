@@ -36,7 +36,7 @@ export const AdminSignIn = () => {
 
       if (data.success) {
         localStorage.setItem("userEmail", data.email);
-        localStorage.setItem("userRole", data.role); // store role
+        localStorage.setItem("userRole", data.role);
 
         if (data.role === "admin") {
           navigate("/admin");
@@ -181,8 +181,8 @@ export const AdminSignIn = () => {
                 sx={{ mt: 3, color: "rgba(255,255,255,0.7)" }}
               >
                 Already have an Account?{" "}
-                <Link to="/adminsignin" style={{ color: "#00bcd4" }}>
-                  Log in
+                <Link to="/signin" style={{ color: "#00bcd4" }}>
+                  Sign In
                 </Link>
               </Typography>
             </Paper>

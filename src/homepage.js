@@ -415,7 +415,6 @@ export const Homepage = () => {
         </Container>
       </Box>
 
-      {/* FINAL CTA */}
       <Box
         sx={{
           bgcolor: "#00bcd4",

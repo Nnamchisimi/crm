@@ -34,8 +34,8 @@ import {
     FlashOn, 
     TireRepair, 
     LocalGasStation,
-    // Sidebar Icons
-    Menu as MenuIcon, // Alias to avoid conflict with Menu component if used
+ 
+    Menu as MenuIcon,
     Campaign as CampaignIcon,
     Notifications as NotificationsIcon,
     Home as HomeIcon,
@@ -44,13 +44,12 @@ import {
     Email as EmailIcon,
     CalendarMonth as CalendarMonthIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom"; // Assumes you are using react-router-dom
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
-// --- Configuration & Constants ---
 const API_BASE_URL = "http://localhost:3007/api";
 
-// Initialize default date to null, forcing the user to select one,
-// which addresses the requirement to hide time slots initially.
+
 const defaultAppointmentDate = null;
 
 const steps = [
@@ -61,7 +60,6 @@ const steps = [
     "Review & Confirm",
 ];
 
-// Helper to map icon names (from DB/API 'type' column) to MUI Icons
 const getIconComponent = (iconName) => {
     switch (iconName) {
         case "Build": return <Build />;
@@ -73,24 +71,35 @@ const getIconComponent = (iconName) => {
     }
 };
 
-// --- Custom Calendar Mock Component (Updated for 7-day range, excluding Sunday) ---
 const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, drawer, navigate }) => {
     
-    // --- Date Calculation Logic (Corrected to be self-contained) ---
     const dates = [];
     const today = new Date(); 
 
-    // Loop until we find 7 valid appointment days
     for (let i = 1; dates.length < 7; i++) {
-        const d = new Date(today); // Clone today's date
-        d.setDate(today.getDate() + i); // Set the date to i days from today
+        const d = new Date(today);
+        d.setDate(today.getDate() + i); 
 
-        // 0 is Sunday. We exclude 0.
         if (d.getDay() !== 0) { 
             dates.push(d);
         }
     }
-    // -------------------------------------------------------------------
+
+    
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    navigate("/signin", { replace: true });
+    return;
+  }
+
+  const { role } = jwtDecode(token);
+  if (role !== "user") {
+    navigate("/signin", { replace: true });
+  }
+}, [navigate]);
+
+ 
     
     return (
         <Box>
@@ -136,7 +145,6 @@ const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, d
 };
 
 
-// --- Main Component ---
 const BookService = () => {
     const navigate = useNavigate();
     const [step, setStep] = useState(0);
@@ -147,47 +155,48 @@ const BookService = () => {
     const [serviceLoading, setServiceLoading] = useState(true); 
     const [branchLoading,  setBranchLoading]=useState(true);
     const[branch,setBranch]= useState([]);
-    const [mobileOpen, setMobileOpen] = useState(false); // Mobile sidebar state
+    const [mobileOpen, setMobileOpen] = useState(false); 
     
-    // State for Time Slots
     const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState(null);
 
-    // Access Local Storage for User Info and Token
     const userToken = localStorage.getItem("token");
     const userEmail = localStorage.getItem("userEmail"); 
 
-    // Form Data State
     const [formData, setFormData] = useState({
         vehicle: null,
-        service: null, // Holds {id, name, cost, type, ...}
-        date: defaultAppointmentDate, // Initialized to null
-        timeSlot: null, // This now holds the TIME STRING, e.g., "09:00"
+        service: null,
+        date: defaultAppointmentDate, 
+        timeSlot: null,
         
         userEmail: userEmail,
     });
 
-    // Determine if a date has been selected (used to hide time slots initially)
     const isDateSelected = !!formData.date; 
 
-    // Helper to handle authentication and redirection
     const handleAuthError = () => {
         console.error("Authentication failed. Token invalid.");
         localStorage.removeItem("token");
         localStorage.removeItem("userEmail");
         navigate("/signin");
     };
+      const handleSignOut=()=>{
+        localStorage.getItem("token")
+        localStorage.getItem(userEmail)
+        sessionStorage.clear();
+        navigate("/signin",{replace:true})
+        
+    }
     
-    // --- Sidebar Content Definition ---
     const sidebarItems = [
-        { text: "Home", icon: <HomeIcon />, path: "/" },
+       
         { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
         { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
         { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
         { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
         { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
-        { text: "Sign Out", icon: <ExitToAppIcon />, path: "/signin" },
+        { text: "Sign Out", icon: <ExitToAppIcon />,  onClick:handleSignOut },
     ];
     
     const drawerContent = (
@@ -205,23 +214,31 @@ const BookService = () => {
                 AutoCRM
             </Typography>
             <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-            <List>
-                {sidebarItems.map((item, idx) => (
-                    <ListItem
-                        key={idx}
-                        button
-                        sx={{ color: "#ccc", "&:hover": { color: "#00bcd4" } }}
-                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                    >
-                        {item.icon}
-                        <ListItemText primary={item.text} sx={{ ml: 2 }} />
-                    </ListItem>
-                ))}
-            </List>
+           <List>
+                        {sidebarItems.map((item, idx) => (
+                          <ListItem
+                            key={idx}
+                            button
+                            sx={{ color: item.path === '/bookings' ? '#00bcd4' : '#ccc',  "&:hover": { color: "#00bcd4" }  }}
+                            onClick={() => {
+                              if (item.onClick) {
+                              
+                                item.onClick();
+                              } else if (item.path) {
+                               
+                                navigate(item.path);
+                              }
+                              setMobileOpen(false); 
+                            }}
+                          >
+                            {item.icon}
+                            <ListItemText primary={item.text} sx={{ ml: 2 }} />
+                          </ListItem>
+                        ))}
+                      </List>
         </Box>
     );
-
-    // 1. Fetch Vehicle Data
+        
     useEffect(() => {
         const fetchVehicles = async () => {
             setVehicleLoading(true);
@@ -296,7 +313,6 @@ const BookService = () => {
         
     }, [userToken, navigate]); 
 
-    // 2. Fetch Service Type Data
     useEffect(() => {
         const fetchServiceTypes = async () => {
             setServiceLoading(true);
@@ -335,27 +351,22 @@ const BookService = () => {
         
     }, [userToken, navigate]); 
     
-    // 3. Fetch Available Time Slots based on selected date
     useEffect(() => {
         const fetchTimeSlots = async () => {
-            // Only fetch if a date is selected AND user is authenticated
             if (!formData.date || !userToken) {
                 setAvailableTimeSlots([]);
-                // Reset timeSlot if the date is cleared
                 if (!formData.date && formData.timeSlot) {
                     setFormData(prev => ({ ...prev, timeSlot: null }));
                 }
                 return;
             }
 
-            // Also reset timeSlot whenever a new date selection triggers a fetch
             setFormData(prev => ({ ...prev, timeSlot: null }));
 
             setLoadingSlots(true);
             setSlotsError(null);
 
             try {
-                // Format the Date object to 'YYYY-MM-DD' string for the URL
                 const dateString = formData.date.toISOString().split('T')[0]; 
 
                 const response = await fetch(`${API_BASE_URL}/timeslots?date=${dateString}`, {
@@ -378,11 +389,9 @@ const BookService = () => {
                 
                 setAvailableTimeSlots(slots);
                 
-                // Auto-select the first AVAILABLE slot
                 const firstAvailableSlot = slots.find(s => s.is_available);
                 const newTimeSlot = firstAvailableSlot ? firstAvailableSlot.slot_time : null;
                 
-                // Set the state
                 setFormData(prev => ({ ...prev, timeSlot: newTimeSlot }));
 
 
@@ -390,19 +399,17 @@ const BookService = () => {
                 console.error("Error fetching time slots:", error);
                 setSlotsError("Could not load available slots for this date.");
                 setAvailableTimeSlots([]);
-                setFormData(prev => ({ ...prev, timeSlot: null })); // Ensure time slot is cleared on error
+                setFormData(prev => ({ ...prev, timeSlot: null }));
             } finally {
                 setLoadingSlots(false);
             }
         };
 
-        // Delay the fetch slightly to debounce and ensure other states are set
         const handler = setTimeout(fetchTimeSlots, 100); 
-        return () => clearTimeout(handler); // Cleanup on unmount/re-render
+        return () => clearTimeout(handler);
         
     }, [formData.date, userToken, navigate]); 
 
-    // --- Handlers ---
     const handleNext = () => setStep((prevActiveStep) => prevActiveStep + 1);
     const handleBack = () => setStep((prevActiveStep) => prevActiveStep - 1);
 
@@ -415,18 +422,15 @@ const BookService = () => {
 
     setLoading(true);
 
-    // Check required fields
     if (!formData.date || !formData.timeSlot || !formData.service || !formData.branch|| !formData.vehicle) {
         alert("Please complete all required fields before confirming.");
         setLoading(false);
         return;
     }
 
-    // Convert date & time into strings expected by backend
-    const appointmentDate = formData.date.toISOString().split('T')[0]; // YYYY-MM-DD
-    const appointmentTime = formData.timeSlot.substring(0, 5);          // HH:MM
+    const appointmentDate = formData.date.toISOString().split('T')[0];
+    const appointmentTime = formData.timeSlot.substring(0, 5);          
 
-    // THE ONLY VALID PAYLOAD FOR YOUR BACKEND
     const bookingPayload = {
         vehicleId: formData.vehicle.id,
         serviceTypeId: formData.service.id,
@@ -463,45 +467,38 @@ const BookService = () => {
     setLoading(false);
 };
 
-    // --- 🛑 END FIX ---
 
-    // Helper to format date for display
     const formatDate = (date) => {
         if (!date) return "N/A";
         return date.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
     
-    // --- Step Validation Logic ---
     const isStepValid = () => {
-        // Prevent progression if critical data is still loading
         if (step === 0 && (vehicleLoading || !userToken)) return false;
           if(step ===1 &&(branchLoading || !userToken)) return false; 
         if (step === 2 && (serviceLoading || !userToken)) return false;  
         if (step === 3 && loadingSlots) return false;
         
         switch (step) {
-            case 0: // Vehicle must be selected
+            case 0:
                 return !!formData.vehicle;
                 
-                case 1: // branch must be selected
+                case 1:
                 return !!formData.branch;
                 
-            case 2: // Service must be selected
+            case 2: 
                 return !!formData.service;
                 
-            case 3: // Date and a valid time string must be selected
+            case 3:
                 const selectedSlot = availableTimeSlots.find(s => s.slot_time === formData.timeSlot);
-                // Check if date is selected, timeSlot string is set, slot object exists, and is available
                 return isDateSelected && !!formData.timeSlot && !!selectedSlot && selectedSlot.is_available;
                 
-            case 4: // Review step, ensure all parts are complete (Vehicle, Service, Date, Time)
-                // Re-evaluate previous checks
+            case 4:
                 const isStep2Valid = (() => {
                     const slot = availableTimeSlots.find(s => s.slot_time === formData.timeSlot);
                     return isDateSelected && !!formData.timeSlot && !!slot && slot.is_available;
                 })();
                 
-                // Check all required fields
                 return !!formData.vehicle && !!formData.service &&!!formData.branch && isStep2Valid;
                 
             default:
@@ -509,10 +506,9 @@ const BookService = () => {
         }
     };
 
-    // --- Step Content Renderer ---
     const getStepContent = (step) => {
         switch (step) {
-            case 0: // Step 1: Select Vehicle
+            case 0:
                 if (vehicleLoading) {
                     return <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress sx={{ color: '#00bcd4' }} /></Box>;
                 }
@@ -563,7 +559,7 @@ const BookService = () => {
                     </Box>
                 );
 
-            case 1://Choose Branch
+            case 1:
                     return (
                         <FormControl component="fieldset" fullwidth>
                             <Typography variant="h6" gutterBottom SX={{COLOR: "#00bcd4"}}>
@@ -637,7 +633,7 @@ const BookService = () => {
                         </FormControl>
                            
                         );
-           case 2: // Step 2: Choose Service
+           case 2: 
                 return (
                     <FormControl component="fieldset" fullWidth>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -661,16 +657,16 @@ const BookService = () => {
                                         {serviceTypes.map((service) => (
                                             <Grid 
                                                 item 
-                                                xs={6}     // Always 2 per row on mobile
-                                                sm={6}     // 2 per row on tablets
-                                                md={4}     // 3 per row on medium+
+                                                xs={6}   
+                                                sm={6}     
+                                                md={4}     
                                                 key={service.id}
                                             >
                                                 <Paper
                                                     sx={{
                                                         p: 0.5,
                                                         borderRadius: 3,
-                                                        height: 150,                      // 🔥 FIXED BOX HEIGHT
+                                                        height: 150,                  
                                                         width :150,
                                                         display: "flex",
                                                         flexDirection: "column",
@@ -691,7 +687,6 @@ const BookService = () => {
                                                     }}
                                                     onClick={() => setFormData({ ...formData, service })}
                                                 >
-                                                    {/* Icon - stays fixed in the top-right corner */}
                                                     <Box 
                                                         sx={{ 
                                                             alignSelf: "flex-end", 
@@ -702,7 +697,6 @@ const BookService = () => {
                                                         {getIconComponent(service.type)}
                                                     </Box>
 
-                                                    {/* Scrollable content region */}
                                                     <Box sx={{ overflowY: "auto", flexGrow: 1 }}>
                                                         <FormControlLabel
                                                             value={String(service.id)}
@@ -718,7 +712,6 @@ const BookService = () => {
                                                                     >
                                                                         Cost: ${service.cost}
                                                                     </Typography>
-                                                                    {/* If longer text appears, it scrolls */}
                                                                     {service.description && (
                                                                         <Typography 
                                                                             variant="body2" 
@@ -748,7 +741,7 @@ const BookService = () => {
                 );
 
            
-            case 3: // Step 3: Pick Date & Time
+            case 3:
                 return (
                     <Box>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -759,7 +752,6 @@ const BookService = () => {
                                 <CalendarMock 
                                     selectedDate={formData.date}
                                     onDateSelect={(date) => setFormData({ ...formData, date, timeSlot: null })} 
-                                    // Pass necessary props (required by the structure you had in the CalendarMock section)
                                     mobileOpen={mobileOpen}
                                     setMobileOpen={setMobileOpen}
                                     drawer={drawerContent}
@@ -784,19 +776,15 @@ const BookService = () => {
                                 ) : availableTimeSlots.length === 0 ? (
                                     <Typography sx={{ color: "rgba(255,255,255,0.7)", my: 2 }}>No available slots for the selected date.</Typography>
                                 ) : (
-                                    // MAPPING OVER DYNAMICALLY FETCHED SLOTS
                                     <Grid container spacing={1}>
                                         {availableTimeSlots.map((slot) => (
                                             <Grid item key={slot.slot_time}>
                                                 <Chip
                                                     label={slot.slot_time} 
-                                                    // The click handler updates the state with the TIME STRING
                                                     onClick={slot.is_available ? () => setFormData({ ...formData, timeSlot: slot.slot_time }) : undefined}
                                                     icon={<EventAvailable />}
-                                                    // Disable if the slot is not available
                                                     disabled={!slot.is_available} 
                                                     sx={{
-                                                        // Check against the stored TIME STRING (formData.timeSlot)
                                                         bgcolor: formData.timeSlot === slot.slot_time && slot.is_available ? "#00bcd4" : "rgba(255,255,255,0.1)",
                                                         color: formData.timeSlot === slot.slot_time && slot.is_available ? "#000" : (slot.is_available ? "white" : "rgba(255,255,255,0.5)"),
                                                         fontWeight: "bold",
@@ -805,17 +793,15 @@ const BookService = () => {
                                                             opacity: 0.8,
                                                             bgcolor: formData.timeSlot === slot.slot_time && slot.is_available ? "#00bcd4" : (slot.is_available ? "rgba(255,255,255,0.2)" : 'rgba(255,0,0,0.2)')
                                                         },
-                                                        // Style for unavailable slots
                                                         ...(!slot.is_available && 
                                                             { 
-                                                                bgcolor: 'rgba(255,0,0,0.2)', // Red background for unavailable
+                                                                bgcolor: 'rgba(255,0,0,0.2)',
                                                                 color: 'rgba(255,255,255,0.5)', 
                                                                 textDecoration: 'line-through', 
                                                             }
                                                         )
                                                     }}
                                                 />
-                                                {/* Optional: Show remaining quota if available */}
                                                 {slot.is_available && slot.remaining_quota !== undefined && (
                                                     <Typography 
                                                         variant="caption" 
@@ -835,7 +821,7 @@ const BookService = () => {
                     </Box>
                 );
 
-            case 4: // Step 4: Review & Confirm
+            case 4:
                 return (
                     <Box>
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
@@ -847,7 +833,6 @@ const BookService = () => {
                             </Typography>
                             <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
 
-                            {/* Vehicle Details */}
                             <Grid container spacing={2} sx={{ mb: 2 }}>
                                 <Grid item xs={12} sm={4}>
                                     <CarRental sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
@@ -858,7 +843,6 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
 
-                              {/* Branch Details */}
                             <Grid container spacing={2} sx={{ mb: 2 }}>
                                 <Grid item xs={12} sm={4}>
                                    <LocationOn sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
@@ -869,7 +853,6 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
                             
-                            {/* Service Details */}
                             <Grid container spacing={2} sx={{ mb: 2 }}>
                                 <Grid item xs={12} sm={4}>
                                     {getIconComponent(formData.service?.type)}
@@ -880,7 +863,6 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
 
-                            {/* Date & Time Details */}
                             <Grid container spacing={2}>
                                 <Grid item xs={12} sm={4}>
                                     <EventAvailable sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
@@ -909,22 +891,17 @@ const BookService = () => {
         }
     };
 
-    // --- Main Render ---
-// --- Main Render ---
 return (
     <Box sx={{ display: 'flex', minHeight: '100vh', background: '#121212', color: 'white' }}>
 
-        {/* Desktop Sidebar */}
         <Box sx={{ width: 250, display: { xs: 'none', md: 'block' } }}>
             {drawerContent}
         </Box>
 
-        {/* Main Content */}
         <Box sx={{ flexGrow: 1, p: 3 }}>
 
-            {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                {/* Mobile menu button */}
+                
                    <Box sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}>
                         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
                           <MenuIcon />
@@ -949,7 +926,6 @@ return (
                 )}
             </Box>
 
-            {/* Mobile Drawer */}
             <Drawer
                 variant="temporary"
                 open={mobileOpen}
@@ -960,7 +936,6 @@ return (
                 {drawerContent}
             </Drawer>
 
-            {/* Stepper + Booking Paper */}
             <Paper 
                 elevation={6} 
                 sx={{ 

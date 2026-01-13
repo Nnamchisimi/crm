@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import Header from "./Header";
+//import Header from "./Header";
 import { GoogleLogin } from "@react-oauth/google";
 import {jwtDecode} from "jwt-decode";
 
@@ -20,10 +20,7 @@ export const SignIn = () => {
   const [password, setPassword] = useState("");
   const [isGoogleUser, setIsGoogleUser] = useState(false);
 
-  // ----------------------
- // ----------------------
-// Manual Email/Password Login
-// ----------------------
+
 const handleSignIn = async (e) => {
   e.preventDefault();
 
@@ -42,19 +39,20 @@ const handleSignIn = async (e) => {
     localStorage.setItem("token", data.token);
     localStorage.setItem("userName", data.name);
     localStorage.setItem("userSurname", data.surname);
+    localStorage.setItem("userPhone", data.phone);
     
 
     if (data.role === "admin") navigate("/admin");
-    else navigate("/dashboard");
+    else
+    if (data.role === "user") navigate("/dashboard");
+    else navigate("/signin");
   } else {
     alert(data.message);
   }
 };
 
 
-// ----------------------
-// Google Login
-// ----------------------
+
 const handleGoogleSuccess = async (credentialResponse) => {
   try {
     if (!credentialResponse?.credential) return;
@@ -74,7 +72,9 @@ const handleGoogleSuccess = async (credentialResponse) => {
       localStorage.setItem("token", data.token);
 
       if (data.role === "admin") navigate("/admin");
-      else navigate("/dashboard");
+      else
+      if (data.role === "user") navigate("/dashboard");
+      else navigate("/signin");
     } else {
       console.error("Google login failed:", data.message);
     }
@@ -89,7 +89,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
 
   return (
     <>
-      <Header />
+
       <Box
         sx={{
           background: "linear-gradient(180deg, #000 0%, #111 100%)",
@@ -116,6 +116,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 backdropFilter: "blur(10px)",
               }}
             >
+              
               <Typography
                 variant="h4"
                 textAlign="center"
@@ -130,7 +131,6 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 Sign In
               </Typography>
 
-              {/* Email/Password Form */}
               <Box
                 component="form"
                 sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3 }}
@@ -177,8 +177,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 or
               </Divider>
 
-              {/* Google Login */}
-              <Box sx={{ display: "flex", justifyContent: "center" }}>
+s              <Box sx={{ display: "flex", justifyContent: "center" }}>
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}

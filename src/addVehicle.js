@@ -24,11 +24,9 @@ import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 
-// 🚀 IMPORT LOGO COMPONENTS (Requires src/BrandLogo.js to be correctly saved)
 import { BrandLogo, getBrandLogo, getBrandDisplayName } from './BrandLogo';
 
 
-// 1. Define carModels outside the component
 const carModels = {
     "Chrysler": ["300 C", "300 M", "Concorde", "Crossfire", "LHS", "Neon", "PT Cruiser", "Sebring", "Stratus"],
     "Audi": [
@@ -110,7 +108,6 @@ const AddVehicle = () => {
     const [errors, setErrors] = useState({});
     const currentYear = new Date().getFullYear();
 
-    // Brands array can be generated dynamically from carModels keys for guaranteed sync
     const brands = Object.keys(carModels).sort();
     const vehicleTypes = ["Sedan", "SUV", "Truck", "Van", "Coupe"];
     const fuelTypes = ["Petrol", "Diesel", "Electric", "Hybrid"];
@@ -122,9 +119,7 @@ const AddVehicle = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        // Update handleChange logic
         if (name === "brand") {
-            // Reset model when brand changes
             setFormData({ ...formData, brand: value, model: "" });
         } else {
             setFormData({ ...formData, [name]: value });
@@ -135,7 +130,6 @@ const AddVehicle = () => {
 
     const validate = () => {
         const newErrors = {};
-        // Note: Since 'year' is a select, its value should be valid, but checking against currentYear is good
         if (formData.year && (parseInt(formData.year) < 1900 || parseInt(formData.year) > currentYear)) {
             newErrors.year = `Year must be between 1900 and ${currentYear}`;
         }
@@ -146,15 +140,12 @@ const AddVehicle = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    // 🚨 This is the CORRECTED and SINGLE definition of handleSubmit 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validate()) return;
 
-        // 1. Get the logged-in user's email 
         const userEmail = localStorage.getItem("userEmail");
 
-        // 2. Get the Authentication Token
         const authToken = localStorage.getItem("token");
 
         if (!userEmail || !authToken) {
@@ -163,7 +154,7 @@ const AddVehicle = () => {
             return;
         }
 
-        // Merge email into formData
+ 
         const vehicleData = { ...formData, email: userEmail };
 
         try {
@@ -171,10 +162,10 @@ const AddVehicle = () => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    // FIX: Add the Authorization header with the Bearer Token
+               
                     "Authorization": `Bearer ${authToken}`,
                 },
-                body: JSON.stringify(vehicleData), // ✅ include email
+                body: JSON.stringify(vehicleData), 
             });
 
             const data = await response.json();
@@ -183,7 +174,7 @@ const AddVehicle = () => {
                 alert("Vehicle registered successfully!");
                 navigate("/dashboard");
             } else {
-                // Handle the 401 Unauthorized case explicitly if needed
+            
                 if (response.status === 401) {
                     alert("Error: Session expired or access denied. Please re-login.");
                     navigate("/signin");
@@ -201,7 +192,7 @@ const AddVehicle = () => {
     const handleSignOut = () => {
         localStorage.removeItem("userEmail");
         localStorage.removeItem("userRole");
-        // Also remove the token! (Crucial fix)
+   
         localStorage.removeItem("token");
         navigate("/signin");
     };
@@ -252,7 +243,7 @@ const AddVehicle = () => {
 
     return (
         <Box sx={{ display: "flex", minHeight: "100vh", background: "#111", color: "white" }}>
-            {/* Mobile Hamburger */}
+        
             <Box
                 sx={{
                     position: "fixed",
@@ -267,7 +258,6 @@ const AddVehicle = () => {
                 </IconButton>
             </Box>
 
-            {/* Mobile Drawer */}
             <Drawer
                 open={mobileOpen}
                 onClose={() => setMobileOpen(false)}
@@ -279,7 +269,7 @@ const AddVehicle = () => {
                 {drawer}
             </Drawer>
 
-            {/* Desktop Sidebar */}
+       
             <Box
                 sx={{
                     width: 250,
@@ -292,7 +282,7 @@ const AddVehicle = () => {
                 {drawer}
             </Box>
 
-            {/* Main Content */}
+   
             <Box sx={{ flexGrow: 1, p: 4, display: "flex", justifyContent: "center" }}>
 
 
@@ -324,12 +314,11 @@ const AddVehicle = () => {
 
                     <form onSubmit={handleSubmit}>
                         {[
-                            // ✅ Added fields
+                     
                             { label: "Name", name: "name" },
                             { label: "Surname", name: "surname" },
                             { label: "Phone Number", name: "phoneNumber" },
 
-                            // Your original fields
                             { label: "VIN Number", name: "vin" },
                             { label: "License Plate", name: "licensePlate" },
 
@@ -348,7 +337,6 @@ const AddVehicle = () => {
                             />
                         ))}
 
-                        {/* ⚙️ UPDATED: BRAND SELECTION WITH LOGO INTEGRATION */}
                         <TextField
                             select
                             label="Brand"
@@ -360,34 +348,34 @@ const AddVehicle = () => {
                             margin="normal"
                             InputLabelProps={{ style: { color: "#ccc" } }}
 
-                            // 👇 This is key: renders the content *inside* the input field when a value is selected
+                        
                             SelectProps={{
                                 renderValue: (selectedValue) => {
                                     if (!selectedValue) {
                                         return <Typography sx={{ color: 'rgba(255,255,255,0.7)' }}>Select a Brand</Typography>;
                                     }
-                                    // Use the BrandLogo component for the selected value
+                          
                                     return <BrandLogo brand={selectedValue} size="md" showName={true} />;
                                 },
                                 sx: {
                                     color: 'white',
-                                    // Target the selected value container to ensure proper alignment
+                                    
                                     '& .MuiSelect-select': { display: 'flex', alignItems: 'center' }
                                 }
                             }}
 
                         >
-                            {/* 👇 This iterates and creates each option in the dropdown */}
+                        
                             {brands.map((brand) => (
                                 <MenuItem
                                     key={brand}
                                     value={brand}
-                                    // Add styling to ensure the logo and text align vertically
+                              
                                     sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
                                 >
-                                    {/* Render the logo icon using the helper function */}
+                                
                                     {getBrandLogo(brand, 'sm')}
-                                    {/* Render the clean display name */}
+                                  
                                     {getBrandDisplayName(brand)}
                                 </MenuItem>
                             ))}
@@ -403,7 +391,7 @@ const AddVehicle = () => {
                             fullWidth
                             required
                             margin="normal"
-                            disabled={!formData.brand} // Disable if no brand is selected
+                            disabled={!formData.brand} 
                             InputLabelProps={{ style: { color: "#ccc" } }}
                             sx={{ input: { color: "white" } }}
                         >

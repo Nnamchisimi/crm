@@ -8,19 +8,16 @@ import {
   TextField,
   MenuItem,
   Divider,
+  Chip,
 } from "@mui/material";
-// import { title } from "framer-motion/client"; // This import was unused and has been removed for cleanup
+
 
 export const Admin = () => {
-  // CORRECTED STATE: Includes 'send_to' (for Campaign logic) 
-  // and separate fields for the Notifications section 
-  // as those forms require different payloads/keys.
+
   const [formData, setFormData] = useState({
-    // Fields for Campaigns/Bulk Email/Newsletter (using campaign_title, description)
     campaign_title: "", 
     description: "",
     
-    // Fields specific to Campaigns
     maintenance_type: "",
     priority: "",
     brand_filter: "",
@@ -28,26 +25,26 @@ export const Admin = () => {
     year_filter: "",
     discount_percent: "",
     valid_until: "",
-    send_to: "", // For filtering logic in Campaigns
+    send_to: "",
     
-    // Fields specific to Bulk Email/Newsletter (or common email functionality)
+ 
     audience: "",
     
-    // Fields specific to Notifications
+
     notificationTitle: "",
     notificationMessage: "",
     notificationType: "",
     notificationTarget: "",
   });
 
-  // Controls which section is visible
-  const [activeSection, setActiveSection] = useState("Campaigns"); // Set default section to 'Campaigns'
+  const [activeSection, setActiveSection] = useState("Campaigns"); 
+    const userEmail = localStorage.getItem("userEmail");
 
   const campaignTypes = ["Maintenance", "Promotion", "Seasonal"];
   const priorityLevels = ["Low", "Medium", "High"];
 
   const handleChange = (e) => {
-    // This function handles updates for all fields using their 'name' attribute
+
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -66,20 +63,29 @@ export const Admin = () => {
         p: { xs: 2, sm: 4, md: 6 },
       }}
     >
-      {/* =========================
-          SECTION 1: Admin Dashboard + Navigation
-          ========================= */}
+
       <Box sx={{ mb: 5 }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Admin Dashboard
         </Typography>
+         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                    <Chip
+                      label={userEmail}
+                      variant="outlined"
+                      sx={{
+                        width: "200px",
+                        color: "#00bcd4",
+                        borderColor: "#00bcd4",
+                      }}
+                    />
+                  </Box>
 
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           {["Campaigns", "Bulk Email", "Notifications", "Newsletter"].map(
             (label) => (
               <Button
                 key={label}
-                variant={activeSection === label ? "contained" : "outlined"} // Highlight active button
+                variant={activeSection === label ? "contained" : "outlined"} 
                 sx={{
                   color: activeSection === label ? "black" : "#00bcd4",
                   backgroundColor: activeSection === label ? "#00bcd4" : "transparent",
@@ -258,8 +264,7 @@ export const Admin = () => {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                // We use campaign_title and description for the payload, 
-                // assuming the backend re-maps these to 'subject' and 'content' for the email service.
+           
                 if (!formData.campaign_title || !formData.description) {
                   alert("Please fill in both subject and content.");
                   return;
@@ -269,14 +274,14 @@ export const Admin = () => {
                   const response = await fetch("http://localhost:3007/api/newsletter/send", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    // Using campaign_title and description, but mapping to subject/content for API
+
                     body: JSON.stringify({ subject: formData.campaign_title, content: formData.description }),
                   });
 
                   const data = await response.json();
                   if (response.ok) {
                     alert(`Newsletter sent to ${data.count} subscribers!`);
-                    setFormData({ ...formData, campaign_title: "", description: "" }); // clear relevant fields
+                    setFormData({ ...formData, campaign_title: "", description: "" }); 
                   } else {
                     alert("Error: " + data.message);
                   }
@@ -287,12 +292,12 @@ export const Admin = () => {
               }}
             >
               <Grid container direction="column" spacing={3}>
-                {/* Subject Field - ALIGNED to campaign_title */}
+          
                 <Grid item>
                   <TextField
                     fullWidth
                     label="Subject"
-                    name="campaign_title" // Correctly aligned to campaign_title
+                    name="campaign_title" 
                     placeholder="Newsletter subject..."
                     value={formData.campaign_title || ""}
                     onChange={handleChange}
@@ -306,14 +311,14 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Content Field - ALIGNED to description */}
+   
                 <Grid item>
                   <TextField
                     fullWidth
                     multiline
                     rows={13}
                     label="Content"
-                    name="description" // Correctly aligned to description
+                    name="description" 
                     placeholder="Newsletter content..."
                     value={formData.description || ""}
                     onChange={handleChange}
@@ -349,9 +354,7 @@ export const Admin = () => {
         </Box>
       )}
 
-      {/* =========================
-          SECTION 4: Notifications Form
-          ========================= */}
+  
       {activeSection === "Notifications" && (
         <Box>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -391,7 +394,7 @@ export const Admin = () => {
                   target: formData.notificationTarget,
                 });
                 alert("Notification sent to target users (simulated)!");
-                // Clear notification-specific fields
+  
                 setFormData({
                   ...formData,
                   notificationTitle: "",
@@ -403,7 +406,7 @@ export const Admin = () => {
               style={{ width: "100%" }}
             >
               <Grid container direction="column" spacing={3}>
-                {/* Title Field (Specific to Notifications) */}
+      
                 <Grid item>
                   <TextField
                     fullWidth
@@ -419,7 +422,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Message Field (Specific to Notifications) */}
+
                 <Grid item>
                   <TextField
                     fullWidth
@@ -437,7 +440,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Type Field (Specific to Notifications) */}
+
                 <Grid item>
                   <TextField
                     select
@@ -457,7 +460,6 @@ export const Admin = () => {
                   </TextField>
                 </Grid>
 
-                {/* Target Field (Specific to Notifications) */}
                 <Grid item>
                   <TextField
                     select
@@ -477,7 +479,6 @@ export const Admin = () => {
                   </TextField>
                 </Grid>
 
-                {/* Send Button */}
                 <Grid item>
                   <Button
                     fullWidth
@@ -501,9 +502,7 @@ export const Admin = () => {
       )}
 
 
-      {/* =========================
-          SECTION 5: Campaigns Form (Aligned to Database)
-          ========================= */}
+
       {activeSection === "Campaigns" && (
         <Box>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -537,7 +536,7 @@ export const Admin = () => {
                   return;
                 }
 
-                // PAYLOAD CONSTRUCTION - Fields align directly with your database schema
+           
                 const payload = {
                   campaign_title: formData.campaign_title,
                   description: formData.description,
@@ -547,7 +546,7 @@ export const Admin = () => {
                     ? parseInt(formData.discount_percent)
                     : null, 
                   valid_until: formData.valid_until,
-                  // Include all filtering and targeting logic fields for the API
+   
                   send_to: formData.send_to,
                   brand_filter: formData.send_to === "filtered" ? formData.brand_filter : null,
                   model_filter: formData.send_to === "filtered" ? formData.model_filter : null,
@@ -566,9 +565,9 @@ export const Admin = () => {
                   const data = await res.json();
                   if (res.ok) {
                     alert("Campaign sent successfully!");
-                    // Reset campaign-specific fields to clear form
+
                     setFormData({
-                      ...formData, // Keep other fields like notifications/bulk email if needed
+                      ...formData, 
                       campaign_title: "",
                       description: "",
                       maintenance_type: "",
@@ -590,7 +589,7 @@ export const Admin = () => {
               }}
             >
               <Grid container spacing={3}>
-                {/* Campaign Title */}
+          
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -605,7 +604,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Description */}
+        
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -622,7 +621,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Type - Removed fixed width for responsiveness */}
+
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     select
@@ -645,7 +644,7 @@ export const Admin = () => {
 
                 
 
-                {/* Priority - Removed fixed width for responsiveness */}
+
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     select
@@ -666,7 +665,7 @@ export const Admin = () => {
                   </TextField>
                 </Grid>
 
-                {/* Discount */}
+
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     fullWidth
@@ -682,7 +681,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Valid Until */}
+        
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     fullWidth
@@ -698,7 +697,7 @@ export const Admin = () => {
                   />
                 </Grid>
 
-                {/* Send To Dropdown - Removed fixed width for responsiveness */}
+
                 <Grid item xs={12} sm={6}>
                   <TextField
                     select
@@ -717,7 +716,7 @@ export const Admin = () => {
                   </TextField>
                 </Grid>
                 
-                {/* Conditional Filters (Only visible if send_to is 'filtered') */}
+          
                 {formData.send_to === "filtered" && (
                   <>
                     <Grid item xs={12} sm={4}>
@@ -765,7 +764,6 @@ export const Admin = () => {
                   </>
                 )}
 
-                {/* Submit Button */}
                 <Grid item xs={12}>
                   <Button
                     fullWidth
