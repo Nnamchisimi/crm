@@ -4,7 +4,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-
+const url = require("url"); 
 
 const mysql = require("mysql2/promise");
 const { OAuth2Client } = require("google-auth-library");
@@ -25,12 +25,40 @@ app.use(cors());
 app.use(express.json());
 
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || "localhost",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASS || "123456789",
-    database: process.env.DB_NAME || "CRM",
-});
+let pool;
+
+if (process.env.DATABASE_URL) {
+    // Production / Railway / Render
+    const params = url.parse(process.env.DATABASE_URL);
+    const [user, password] = params.auth.split(":");
+
+    pool = mysql.createPool({
+        host: params.hostname,
+        port: params.port,
+        user: user,
+        password: password,
+        database: params.pathname.replace(/^\//, ""),
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    });
+
+    console.log("✅ Connected to Production DB:", params.hostname);
+} else {
+    // Local development
+    pool = mysql.createPool({
+        host: process.env.DB_HOST || "localhost",
+        user: process.env.DB_USER || "root",
+        password: process.env.DB_PASS || "123456",
+        database: process.env.DB_NAME || "CRM",
+        port: process.env.DB_PORT || 3306,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    });
+
+    console.log("✅ Connected to Local MySQL DB");
+}
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
