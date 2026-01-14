@@ -11,6 +11,7 @@ import AddVehicle from "./addVehicle"
 import Newsletter from "./newsletter";
 import NotificationsPage from "./NotificationsPage";
 import ProtectedAdminRoute from "./protectedAdminRoute"; 
+
 import CampaignsPage from "./CampaignsPage";
 import CarDetails from "./CarDetails";
 import BookService from "./booking";
@@ -64,14 +65,7 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
          <Route path="/verify-email" element={<VerifyEmail />} />
 
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedAdminRoute>
-              <Dashboard />
-            </ProtectedAdminRoute>
-          }
-        />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/admin"
           element={

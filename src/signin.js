@@ -177,7 +177,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 or
               </Divider>
 
-s              <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <Box sx={{ display: "flex", justifyContent: "center" }}>
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}

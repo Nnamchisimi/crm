@@ -85,7 +85,7 @@ const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, d
         }
     }
 
-    
+
 useEffect(() => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -98,7 +98,6 @@ useEffect(() => {
     navigate("/signin", { replace: true });
   }
 }, [navigate]);
-
  
     
     return (
@@ -182,8 +181,8 @@ const BookService = () => {
         navigate("/signin");
     };
       const handleSignOut=()=>{
-        localStorage.getItem("token")
-        localStorage.getItem(userEmail)
+        localStorage.removeItem("token")
+        localStorage.removeItem(userEmail)
         sessionStorage.clear();
         navigate("/signin",{replace:true})
         
