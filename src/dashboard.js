@@ -39,6 +39,8 @@ const Dashboard = () => {
   const [allCampaigns, setAllCampaigns] = useState([]);
   const userEmail = localStorage.getItem("userEmail");
   const userName = localStorage.getItem("userName");
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
+
 
     const handleSignOut = () => {
   localStorage.removeItem("token");
@@ -102,7 +104,7 @@ useEffect(() => {
       }
 
       try {
-        const res = await fetch("http://localhost:3007/api/vehicles", {
+        const res = await fetch(`${API_BASE_URL}/api/vehicles`, {
           headers: {
             "Authorization": `Bearer ${userToken}`,
           },
@@ -133,7 +135,7 @@ useEffect(() => {
       if (!userEmail || !userToken) return;
 
       try {
-        const res = await fetch(`http://localhost:3007/api/campaigns?email=${userEmail}`, {
+        const res = await fetch(`${API_BASE_URL}/api/campaigns?email=${userEmail}`, {
           headers: {
             "Authorization": `Bearer ${userToken}`,
           },
@@ -172,7 +174,7 @@ useEffect(() => {
 
   const cancelCampaign = async (campaign, email) => {
     try {
-      const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/cancel`, {
+      const res = await fetch(`${API_BASE_URL}/api/campaigns/${campaign.id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -186,9 +188,12 @@ useEffect(() => {
     }
   };
 
+
+
+
   const bookCampaign = async (campaign) => {
     try {
-      const res = await fetch(`http://localhost:3007/api/campaigns/${campaign.id}/book`, {
+        const res = await fetch(`${API_BASE_URL}/api/campaigns/${campaign.id}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail }),
