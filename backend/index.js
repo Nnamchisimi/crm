@@ -590,10 +590,12 @@ app.post("/api/auth/signup", async (req, res) => {
     try {
         const { name, surname, phoneNumber, email, username, password } = req.body;
 
+        // 1️⃣ Validate required fields
         if (!name || !surname || !email || !username || !password) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
+        // 2️⃣ Check if email or username already exists
         const [existing] = await pool.query(
             "SELECT id FROM users WHERE email = ? OR username = ?",
             [email, username]
@@ -602,44 +604,61 @@ app.post("/api/auth/signup", async (req, res) => {
             return res.status(400).json({ message: "User already exists" });
         }
 
+        // 3️⃣ Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const token = crypto.randomBytes(32).toString("hex");
-        const expires = new Date(Date.now() + 60 * 60 * 1000); 
+        // 4️⃣ Generate unique random CRM number
+        const generateRandomCRMNumber = async () => {
+            let crmNumber;
+            let isUnique = false;
 
+            while (!isUnique) {
+                const randomNum = Math.floor(Math.random() * 99999) + 1; // 1-99999
+                crmNumber = `CRM-${String(randomNum).padStart(5, "0")}`; // e.g., CRM-04237
+
+                const [rows] = await pool.query(
+                    "SELECT id FROM users WHERE crm_number = ?",
+                    [crmNumber]
+                );
+                if (rows.length === 0) isUnique = true;
+            }
+
+            return crmNumber;
+        };
+
+        const crmNumber = await generateRandomCRMNumber();
+
+        // 5️⃣ Generate email verification token
+        const token = crypto.randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        // 6️⃣ Insert user into database
         await pool.execute(
             `INSERT INTO users 
-            (name, surname, username, email, phone_number, password, is_verified, email_verification_token, email_verification_expires)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-            [
-                name,
-                surname,
-                username,
-                email,
-                phoneNumber || null,
-                hashedPassword,
-                token,
-                expires
-            ]
+            (name, surname, username, email, phone_number, password, crm_number, is_verified, email_verification_token, email_verification_expires)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+            [name, surname, username, email, phoneNumber || null, hashedPassword, crmNumber, token, expires]
         );
 
+        // 7️⃣ Send verification email
         const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
-
         await transporter.sendMail({
             from: `"CRM App" <${process.env.SMTP_USER}>`,
             to: email,
             subject: "Verify your email",
             html: `
-              <h3>Verify your email</h3>
-              <p>Please click the link below to activate your account:</p>
-              <a href="${verifyUrl}">Verify Email</a>
-              <p>This link expires in 1 hour.</p>
+                <h3>Verify your email</h3>
+                <p>Please click the link below to activate your account:</p>
+                <a href="${verifyUrl}">Verify Email</a>
+                <p>This link expires in 1 hour.</p>
             `
         });
 
+        // 8️⃣ Respond to frontend with CRM number
         res.status(201).json({
             success: true,
-            message: "Signup successful. Please check your email to verify your account."
+            message: "Signup successful. Please check your email to verify your account.",
+            crm_number: crmNumber
         });
 
     } catch (err) {
@@ -647,6 +666,7 @@ app.post("/api/auth/signup", async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 app.post("/api/auth/verify-email", async (req, res) => {
   const { token } = req.body;
