@@ -24,30 +24,38 @@ export const SignIn = () => {
 const handleSignIn = async (e) => {
   e.preventDefault();
 
-  const res = await fetch("http://localhost:3007/api/auth/signin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  // Use environment variable, fallback to localhost for local dev
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
-  const data = await res.json();
-  console.log("Signin response:", data);
+  try {
+    const res = await fetch(`${API_URL}/api/auth/signin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  if (data.success) {
-    localStorage.setItem("userEmail", data.email);
-    localStorage.setItem("role", data.role);
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("userName", data.name);
-    localStorage.setItem("userSurname", data.surname);
-    localStorage.setItem("userPhone", data.phone);
-    
+    const data = await res.json();
+    console.log("Signin response:", data);
 
-    if (data.role === "admin") navigate("/admin");
-    else
-    if (data.role === "user") navigate("/dashboard");
-    else navigate("/signin");
-  } else {
-    alert(data.message);
+    if (data.success) {
+      // Store user info in localStorage (works both locally and in production)
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userName", data.name);
+      localStorage.setItem("userSurname", data.surname);
+      localStorage.setItem("userPhone", data.phone);
+
+      // Navigate based on role
+      if (data.role === "admin") navigate("/admin");
+      else if (data.role === "user") navigate("/dashboard");
+      else navigate("/signin");
+    } else {
+      alert(data.message);
+    }
+  } catch (err) {
+    console.error("SignIn error:", err);
+    alert("Failed to connect to server. Please try again.");
   }
 };
 
