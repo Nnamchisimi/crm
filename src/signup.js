@@ -257,13 +257,14 @@ export const SignUp = () => {
               or
             </Divider>
 
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
+        {/*    <Box sx={{ display: "flex", justifyContent: "center" }}>
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
                 useOneTap
               />
             </Box>
+      */}
 
             <Typography
               variant="body2"

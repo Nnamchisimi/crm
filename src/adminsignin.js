@@ -156,13 +156,14 @@ export const AdminSignIn = () => {
 
               <Divider sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>or</Divider>
 
-              <Box sx={{ display: "flex", justifyContent: "center" }}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  useOneTap
-                />
-              </Box>
+                 {/*    <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap
+              />
+            </Box>
+             */}
 
               <Typography
                 variant="body2"
