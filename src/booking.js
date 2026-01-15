@@ -47,7 +47,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
-const API_BASE_URL = "http://localhost:3007/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 
 const defaultAppointmentDate = null;
