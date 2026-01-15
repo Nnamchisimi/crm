@@ -17,6 +17,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+     transporter.verify((error, success) => {
+            if (error) {
+                console.error("❌ Email transporter error:", error);
+            } else {
+                console.log("✅ Email transporter is ready");
+            }
+            });
+
 
 
 const app = express();
@@ -681,13 +689,7 @@ app.post("/api/auth/signup", async (req, res) => {
             `
             });
 
-            transporter.verify((error, success) => {
-            if (error) {
-                console.error("❌ Email transporter error:", error);
-            } else {
-                console.log("✅ Email transporter is ready");
-            }
-            });
+       
 
 
 
