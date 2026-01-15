@@ -11,26 +11,26 @@ import {
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 export const SignUp = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
-  const[countryCode,setCountryCode]= useState("90");
+  const [countryCode, setCountryCode] = useState("90");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [isGoogleUser, setIsGoogleUser] = useState(false);
 
-
   const navigate = useNavigate();
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const fullNumber=`+${countryCode}${phoneNumber}`;
-        console.log("Submitting phone number:", fullNumber);
+
+    const fullNumber = `+${countryCode}${phoneNumber}`;
+    console.log("Submitting phone number:", fullNumber);
 
     const userData = {
       name,
@@ -50,30 +50,36 @@ export const SignUp = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
       });
-      
 
       const data = await res.json();
       console.log("Signup response:", data);
 
       if (data.success) {
-        console.log(" Signup successful!");
+        console.log("✅ Signup successful!");
         console.log("Generated CRM Number:", data.crm_number);
 
-
         localStorage.setItem("crmNumber", data.crm_number);
+
         alert(
-          "Signup successful! Please check your email for the verification link before signing in."
+          "Signup successful! You will now be redirected to verify your email."
         );
 
-        navigate("/signin");
+        // ✅ Redirect to verification page
+        if (data.token) {
+          window.location.href = `/#verify-email?token=${data.token}`;
+        } else {
+          // Safety fallback
+          navigate("/signin");
+        }
       } else {
         console.error("❌ Signup failed:", data.error || data.message);
+        alert(data.error || data.message || "Signup failed");
       }
     } catch (err) {
       console.error("❌ Signup error:", err);
+      alert("Something went wrong. Please try again.");
     }
   };
-
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -166,6 +172,7 @@ export const SignUp = () => {
                 InputLabelProps={{ style: { color: "#aaa" } }}
                 InputProps={{ style: { color: "white" } }}
               />
+
               <TextField
                 label="Surname"
                 fullWidth
@@ -175,37 +182,38 @@ export const SignUp = () => {
                 InputLabelProps={{ style: { color: "#aaa" } }}
                 InputProps={{ style: { color: "white" } }}
               />
-                 <Box sx={{ display: "flex", gap: 1 }}>
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    style={{
-                      background: "#222",
-                      color: "white",
-                      border: "1px solid #555",
-                      borderRadius: "4px",
-                      padding: "0 8px",
-                      minWidth: "80px",
-                    }}
-                  >
-                    <option value="1">🇺🇸 +1</option>
-                    <option value="44">🇬🇧 +44</option>
-                    <option value="90">🇹🇷 +90</option>
-                  </select>
 
-                  <TextField
-                    label="Phone number"
-                    fullWidth
-                    required
-                    value={phoneNumber}
-                    onChange={(e) => {
-                      const digitsOnly = e.target.value.replace(/\D/g, ""); 
-                      setPhoneNumber(digitsOnly);
-                    }}
-                    InputLabelProps={{ style: { color: "#aaa" } }}
-                    InputProps={{ style: { color: "white" } }}
-                  />
-                </Box>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  style={{
+                    background: "#222",
+                    color: "white",
+                    border: "1px solid #555",
+                    borderRadius: "4px",
+                    padding: "0 8px",
+                    minWidth: "80px",
+                  }}
+                >
+                  <option value="1">🇺🇸 +1</option>
+                  <option value="44">🇬🇧 +44</option>
+                  <option value="90">🇹🇷 +90</option>
+                </select>
+
+                <TextField
+                  label="Phone number"
+                  fullWidth
+                  required
+                  value={phoneNumber}
+                  onChange={(e) =>
+                    setPhoneNumber(e.target.value.replace(/\D/g, ""))
+                  }
+                  InputLabelProps={{ style: { color: "#aaa" } }}
+                  InputProps={{ style: { color: "white" } }}
+                />
+              </Box>
+
               <TextField
                 label="Email"
                 fullWidth
@@ -216,6 +224,7 @@ export const SignUp = () => {
                 InputProps={{ style: { color: "white" } }}
                 disabled={isGoogleUser}
               />
+
               <TextField
                 label="Username"
                 fullWidth
@@ -226,6 +235,7 @@ export const SignUp = () => {
                 InputProps={{ style: { color: "white" } }}
                 disabled={isGoogleUser}
               />
+
               <TextField
                 label="Password"
                 type="password"
@@ -258,15 +268,6 @@ export const SignUp = () => {
             <Divider sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>
               or
             </Divider>
-
-        {/*    <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-              />
-            </Box>
-      */}
 
             <Typography
               variant="body2"
