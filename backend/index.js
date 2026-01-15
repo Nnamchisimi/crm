@@ -676,7 +676,8 @@ app.post("/api/auth/signup", async (req, res) => {
         );
 
         // 7️⃣ Send verification email
-        const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+        const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
+
         await transporter.sendMail({
             from: `"CRM App" <${process.env.EMAIL_USER}>`,
             to: email,
