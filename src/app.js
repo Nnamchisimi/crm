@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
+
 import { Homepage } from "./homepage";
 import { SignIn } from "./signin";
 import { AdminSignIn } from "./adminsignin";
@@ -7,18 +8,14 @@ import { SignUp } from "./signup";
 import Dashboard from "./dashboard";
 import { Admin } from "./admin";
 import Header from "./Header";
-import AddVehicle from "./addVehicle"
+import AddVehicle from "./addVehicle";
 import Newsletter from "./newsletter";
 import NotificationsPage from "./NotificationsPage";
-import ProtectedAdminRoute from "./protectedAdminRoute"; 
-
+import ProtectedAdminRoute from "./protectedAdminRoute";
 import CampaignsPage from "./CampaignsPage";
 import CarDetails from "./CarDetails";
 import BookService from "./booking";
 import VerifyEmail from "./VerifyEmail";
-
-
-
 
 function AppWrapper() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -31,13 +28,11 @@ function AppWrapper() {
   };
 
   return (
-    <BrowserRouter>
-      <AppContent
-        isLoggedIn={isLoggedIn}
-        onSignOut={handleSignOut}
-        setIsLoggedIn={setIsLoggedIn}
-      />
-    </BrowserRouter>
+    <AppContent
+      isLoggedIn={isLoggedIn}
+      onSignOut={handleSignOut}
+      setIsLoggedIn={setIsLoggedIn}
+    />
   );
 }
 
@@ -45,26 +40,32 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
   const location = useLocation();
 
   const showHeaderPaths = ["/", "/admin"];
-
   const showHeader = showHeaderPaths.includes(location.pathname);
 
   return (
     <>
-      {showHeader && <Header isLoggedIn={isLoggedIn} onSignOut={onSignOut} />}
+      {showHeader && (
+        <Header isLoggedIn={isLoggedIn} onSignOut={onSignOut} />
+      )}
+
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/signin" element={<SignIn setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/adminsignin" element={<AdminSignIn setIsLoggedIn={setIsLoggedIn} />} />
+        <Route
+          path="/adminsignin"
+          element={<AdminSignIn setIsLoggedIn={setIsLoggedIn} />}
+        />
         <Route path="/signup" element={<SignUp setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/addVehicle"element={<AddVehicle setIsLoggedIn={setIsLoggedIn}/>}/>
-        <Route path ="/newsletter"element={<Newsletter setIsLoggedIn={setIsLoggedIn}/>}/>
+        <Route
+          path="/addVehicle"
+          element={<AddVehicle setIsLoggedIn={setIsLoggedIn} />}
+        />
+        <Route path="/newsletter" element={<Newsletter />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-         <Route path="/campaigns" element={<CampaignsPage />} />
-         <Route path="/vehicles/:id" element={<CarDetails />} />
-         <Route path="booking" element ={<BookService/>}/>
-         <Route path="/verify-email" element={<VerifyEmail />} />
-
-
+        <Route path="/campaigns" element={<CampaignsPage />} />
+        <Route path="/vehicles/:id" element={<CarDetails />} />
+        <Route path="/booking" element={<BookService />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/admin"
@@ -74,8 +75,6 @@ function AppContent({ isLoggedIn, onSignOut, setIsLoggedIn }) {
             </ProtectedAdminRoute>
           }
         />
-
-   
       </Routes>
     </>
   );
