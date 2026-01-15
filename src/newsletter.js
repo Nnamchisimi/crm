@@ -29,6 +29,7 @@ import { motion } from "framer-motion";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { jwtDecode } from "jwt-decode";
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 const Newsletter = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -103,7 +104,7 @@ useEffect(() => {
     };
 
     try {
-      const response = await fetch("http://localhost:3007/api/newsletter", {
+       const response = await fetch(`${API_BASE_URL}/api/newsletter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

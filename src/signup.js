@@ -11,6 +11,7 @@ import {
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 export const SignUp = () => {
   const [email, setEmail] = useState("");
@@ -21,6 +22,7 @@ export const SignUp = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+
 
   const navigate = useNavigate();
 
@@ -43,7 +45,7 @@ export const SignUp = () => {
     console.log("Submitting signup data:", userData);
 
     try {
-      const res = await fetch("http://localhost:3007/api/auth/signup", {
+      const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),

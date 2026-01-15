@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Typography, Box } from '@mui/material';
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 const carModels = {
     "Chrysler": ["300 C", "300 M", "Concorde", "Crossfire", "LHS", "Neon", "PT Cruiser", "Sebring", "Stratus"],
@@ -126,7 +127,7 @@ const EditCarDetails = ({ open, handleClose, vehicle, onUpdate }) => {
         }
 
         try {
-            const response = await fetch(`http://localhost:3007/api/vehicles/${vehicle.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicle.id}`, {
                 method: 'PUT', 
                 headers: {
                     'Content-Type': 'application/json',

@@ -26,6 +26,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom"; 
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
  
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 
 const NotificationsPage = () => {
@@ -70,7 +71,7 @@ const sidebarItems = [
   
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`http://localhost:3007/api/notifications/${userEmail}`);
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${userEmail}`);
       const data = await res.json();
       if (res.ok) {
         setNotifications(data);
@@ -88,7 +89,7 @@ const sidebarItems = [
 
   const markAsRead = async (id) => {
     try {
-      const res = await fetch(`http://localhost:3007/api/notifications/mark-read/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/mark-read/${id}`, {
         method: "POST",
       });
       if (res.ok) {
