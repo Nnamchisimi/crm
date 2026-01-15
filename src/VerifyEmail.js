@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
+
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -22,13 +24,14 @@ export default function VerifyEmail() {
       try {
         console.log("🔹 Sending verification request with token:", token);
 
-        const res = await axios.post(
-          "http://localhost:3007/api/auth/verify-email",
-          { token },
-          {
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+       const res = await axios.post(
+            `${API_URL}/api/auth/verify-email`,
+            { token },
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+
 
         console.log(" Backend response:", res);
 

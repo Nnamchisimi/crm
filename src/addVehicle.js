@@ -25,6 +25,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 
 import { BrandLogo, getBrandLogo, getBrandDisplayName } from './BrandLogo';
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 
 const carModels = {
@@ -158,15 +159,14 @@ const AddVehicle = () => {
         const vehicleData = { ...formData, email: userEmail };
 
         try {
-            const response = await fetch("http://localhost:3007/api/vehicles", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-               
-                    "Authorization": `Bearer ${authToken}`,
-                },
-                body: JSON.stringify(vehicleData), 
-            });
+              const response = await fetch(`${API_BASE_URL}/api/vehicles`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${authToken}`,
+                        },
+                        body: JSON.stringify(vehicleData),
+                    });
 
             const data = await response.json();
 
