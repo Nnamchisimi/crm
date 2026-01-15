@@ -246,7 +246,7 @@ const BookService = () => {
                 return;
             }
             try {
-                const res = await fetch(`${API_BASE_URL}/vehicles`, {
+                const res = await fetch(`${API_BASE_URL}/api/vehicles`, {
                     headers: {
                         "Authorization": `Bearer ${userToken}`,
                     },
@@ -284,7 +284,7 @@ const BookService = () => {
             }
             
             try {
-                const res = await fetch(`${API_BASE_URL}/branch`, {
+                const res = await fetch(`${API_BASE_URL}/api/branch`, {
                     headers: {
                         "Authorization": `Bearer ${userToken}`,
                     },
@@ -322,7 +322,7 @@ const BookService = () => {
             }
             
             try {
-                const res = await fetch(`${API_BASE_URL}/servicetype`, {
+                const res = await fetch(`${API_BASE_URL}/api/servicetype`, {
                     headers: {
                         "Authorization": `Bearer ${userToken}`,
                     },
@@ -368,7 +368,7 @@ const BookService = () => {
             try {
                 const dateString = formData.date.toISOString().split('T')[0]; 
 
-                const response = await fetch(`${API_BASE_URL}/timeslots?date=${dateString}`, {
+                const response = await fetch(`${API_BASE_URL}/api/timeslots?date=${dateString}`, {
                     headers: {
                         'Authorization': `Bearer ${userToken}`,
                         'Content-Type': 'application/json',
@@ -441,7 +441,7 @@ const BookService = () => {
     console.log("Submitting Booking Payload:", bookingPayload);
 
     try {
-        const res = await fetch(`${API_BASE_URL}/bookings`, {
+        const res = await fetch(`${API_BASE_URL}/api/bookings`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
