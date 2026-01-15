@@ -671,7 +671,7 @@ app.post("/api/auth/signup", async (req, res) => {
         // 7️⃣ Send verification email
         const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
         await transporter.sendMail({
-            from: `"CRM App" <${process.env.SMTP_USER}>`,
+            from: `"CRM App" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Verify your email",
             html: `
@@ -680,7 +680,17 @@ app.post("/api/auth/signup", async (req, res) => {
                 <a href="${verifyUrl}">Verify Email</a>
                 <p>This link expires in 1 hour.</p>
             `
-        });
+            });
+
+            transporter.verify((error, success) => {
+            if (error) {
+                console.error("❌ Email transporter error:", error);
+            } else {
+                console.log("✅ Email transporter is ready");
+            }
+            });
+
+
 
         // 8️⃣ Respond to frontend with CRM number
         res.status(201).json({
