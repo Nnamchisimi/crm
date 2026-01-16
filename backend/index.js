@@ -856,7 +856,6 @@ app.post("/api/newsletter", async (req, res) => {
     }
 });
 
-
 app.post("/api/newsletter/send", async (req, res) => {
     const { subject, content } = req.body;
 
