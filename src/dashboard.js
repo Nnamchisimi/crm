@@ -214,7 +214,7 @@ const Dashboard = () => {
           ))}
         </Grid>
 
-        {/* Vehicles */}
+            {/* Vehicles */}
         <Box mt={{ xs: 3, sm: 6 }}>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             My Vehicles
@@ -240,19 +240,19 @@ const Dashboard = () => {
                 <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
                   <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%",  minWidth: 0,  }}>
                    <Box sx={{ display: "flex", alignItems: "center", mb: 1, minWidth: 0 }}>
-  <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
+                    <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
 
-  <Box sx={{ ml: 1, minWidth: 0, flexGrow: 1 }}>
-    <Typography
-      variant="h6"
-      fontWeight="bold"
-      noWrap
-      sx={{ minWidth: 0 }}
-    >
-      {vehicle.brand || "---"} {vehicle.model || "---"}
-    </Typography>
-  </Box>
-</Box>
+                    <Box sx={{ ml: 1, minWidth: 0, flexGrow: 1 }}>
+                      <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        noWrap
+                        sx={{ minWidth: 0 }}
+                      >
+                        {vehicle.brand || "---"} {vehicle.model || "---"}
+                      </Typography>
+                    </Box>
+                  </Box>
 
                     <Divider sx={{ mb: 1, borderColor: "rgba(255,255,255,0.1)" }} />
                     <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
