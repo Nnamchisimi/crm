@@ -855,20 +855,6 @@ app.post("/api/newsletter", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
-app.get("/test-email", async (req, res) => {
-  try {
-    await transporter.sendMail({
-      from: `"CRM App" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
-      subject: "Test Email from Render",
-      text: "If you receive this, your email setup is working!",
-    });
-    res.send("✅ Test email sent! Check your inbox (and spam).");
-  } catch (err) {
-    console.error("❌ Test email failed:", err);
-    res.status(500).send("❌ Test email failed, check logs");
-  }
-});
 
 
 app.post("/api/newsletter/send", async (req, res) => {
