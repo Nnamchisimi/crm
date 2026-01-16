@@ -214,52 +214,141 @@ const Dashboard = () => {
           ))}
         </Grid>
 
-        {/* Vehicles */}
-        <Box mt={{ xs: 3, sm: 6 }}>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
-            My Vehicles
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddCircleOutlineIcon />}
-            sx={{ backgroundColor: "#00bcd4", "&:hover": { backgroundColor: "#00acc1" }, mb: 2 }}
-            onClick={() => navigate("/addVehicle")}
-          >
-            Add Vehicle
-          </Button>
+    {/* Vehicles */}
+<Box mt={{ xs: 3, sm: 6 }}>
+  <Typography variant="h5" fontWeight="bold" gutterBottom>
+    My Vehicles
+  </Typography>
 
-          <Grid container spacing={3}>
-            {vehicles.length === 0 ? (
-              <Grid item xs={12}>
-                <Paper sx={{ p: 3, borderRadius: 3, textAlign: "center", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 150 }}>
-                  <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>No vehicles registered yet.</Typography>
-                </Paper>
-              </Grid>
-            ) : (
-              vehicles.map((vehicle) => (
-                <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
-                  <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
-                      <Box sx={{ ml: 1 }}>
-                        <Typography variant="h6" fontWeight="bold">{vehicle.brand || "---"} {vehicle.model || "---"}</Typography>
-                      </Box>
-                    </Box>
-                    <Divider sx={{ mb: 1, borderColor: "rgba(255,255,255,0.1)" }} />
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-                      {vehicle.vehicle_type || "---"} • {vehicle.year || "---"} • {vehicle.license_plate || "---"}
-                    </Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>VIN: {vehicle.vin || "---"}</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>Fuel: {vehicle.fuel_type || "---"}</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>Kilometers: {vehicle.kilometers?.toLocaleString() || 0} km</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>CRM Number: {vehicle.crm_number || "---"}</Typography>
-                    <Button variant="outlined" sx={{ mt: 1, color: "white", borderColor: "white" }} onClick={() => navigate(`/vehicles/${vehicle.id}`)}>View Details</Button>
-                  </Paper>
-                </Grid>
-              ))
-            )}
-          </Grid>
-        </Box>
+  <Button
+    variant="contained"
+    startIcon={<AddCircleOutlineIcon />}
+    sx={{
+      backgroundColor: "#00bcd4",
+      "&:hover": { backgroundColor: "#00acc1" },
+      mb: 2,
+    }}
+    onClick={() => navigate("/addVehicle")}
+  >
+    Add Vehicle
+  </Button>
+
+  <Grid container spacing={3}>
+    {vehicles.length === 0 ? (
+      <Grid item xs={12}>
+        <Paper
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            textAlign: "center",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 150,
+            width: "100%",
+          }}
+        >
+          <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+            No vehicles registered yet.
+          </Typography>
+        </Paper>
+      </Grid>
+    ) : (
+      vehicles.map((vehicle) => (
+        <Grid
+          item
+          xs={12}
+          sm={6}
+          md={4}
+          key={vehicle.id}
+          sx={{ minWidth: 0 }}
+        >
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 3,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                mb: 1,
+                minWidth: 0,
+              }}
+            >
+              <BrandLogo
+                brand={vehicle.brand}
+                size="lg"
+                showName={false}
+              />
+
+              <Box sx={{ ml: 1, minWidth: 0, flexGrow: 1 }}>
+                <Typography
+                  variant="h6"
+                  fontWeight="bold"
+                  noWrap
+                  sx={{ minWidth: 0 }}
+                >
+                  {vehicle.brand || "---"} {vehicle.model || "---"}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider
+              sx={{ mb: 1, borderColor: "rgba(255,255,255,0.1)" }}
+            />
+
+            {/* Vehicle details */}
+            <Typography
+              noWrap
+              sx={{ color: "rgba(255,255,255,0.7)" }}
+            >
+              {vehicle.vehicle_type || "---"} • {vehicle.year || "---"} •{" "}
+              {vehicle.license_plate || "---"}
+            </Typography>
+
+            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+              VIN: {vehicle.vin || "---"}
+            </Typography>
+
+            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+              Fuel: {vehicle.fuel_type || "---"}
+            </Typography>
+
+            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+              Kilometers:{" "}
+              {vehicle.kilometers?.toLocaleString() || 0} km
+            </Typography>
+
+            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
+              CRM Number: {vehicle.crm_number || "---"}
+            </Typography>
+
+            <Button
+              variant="outlined"
+              sx={{ mt: 1, color: "white", borderColor: "white" }}
+              fullWidth
+              onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+            >
+              View Details
+            </Button>
+          </Paper>
+        </Grid>
+      ))
+    )}
+  </Grid>
+</Box>
 
         {/* Recent Bookings */}
         <Box mt={{ xs: 3, sm: 6 }}>
