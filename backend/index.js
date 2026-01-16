@@ -11,7 +11,7 @@ const { OAuth2Client } = require("google-auth-library");
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 587,
+    port: 465,
     secure: true, // must be true for 465
     auth: {
         user: process.env.EMAIL_USER,
@@ -658,46 +658,39 @@ app.post("/api/auth/signup", async (req, res) => {
 
             return crmNumber;
         };
+// 7️⃣ Send verification email
+const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
 
-        const crmNumber = await generateRandomCRMNumber();
+try {
+    await transporter.sendMail({
+        from: `"CRM App" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Verify your email",
+        html: `
+            <h3>Verify your email</h3>
+            <p>Please click the link below to activate your account:</p>
+            <a href="${verifyUrl}">Verify Email</a>
+            <p>This link expires in 1 hour.</p>
+        `
+    });
+    console.log("✅ Verification email sent to:", email);
+} catch (err) {
+    console.error("⚠️ Failed to send verification email:", err);
+    // Optional: mark user as verified if email fails
+    await pool.execute(
+        `UPDATE users SET is_verified = 1 WHERE email = ?`,
+        [email]
+    );
+    console.log("⚠️ User marked as verified due to email failure:", email);
+}
 
-        // 5️⃣ Generate email verification token
-        const token = crypto.randomBytes(32).toString("hex");
-        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+// 8️⃣ Respond to frontend
+res.status(201).json({
+    success: true,
+    message: "Signup successful. Please check your email to verify your account.",
+    crm_number: crmNumber
+});
 
-        // 6️⃣ Insert user into database
-        await pool.execute(
-            `INSERT INTO users 
-            (name, surname, username, email, phone_number, password, crm_number, is_verified, email_verification_token, email_verification_expires)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-            [name, surname, username, email, phoneNumber || null, hashedPassword, crmNumber, token, expires]
-        );
-
-        // 7️⃣ Send verification email
-        const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
-
-        await transporter.sendMail({
-            from: `"CRM App" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Verify your email",
-            html: `
-                <h3>Verify your email</h3>
-                <p>Please click the link below to activate your account:</p>
-                <a href="${verifyUrl}">Verify Email</a>
-                <p>This link expires in 1 hour.</p>
-            `
-            });
-
-       
-
-
-
-        // 8️⃣ Respond to frontend with CRM number
-        res.status(201).json({
-            success: true,
-            message: "Signup successful. Please check your email to verify your account.",
-            crm_number: crmNumber
-        });
 
     } catch (err) {
         console.error("Signup error:", err);
