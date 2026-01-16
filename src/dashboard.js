@@ -206,7 +206,7 @@ const Dashboard = () => {
             <Grid item xs={12} sm={6} md={4} key={index}>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.2 }}>
                 <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Typography variant="h6" sx={{ color: "#00bcd4" }}>{stat.title}</Typography>
+                  <Typography variant="h6" sx={{  minWidth: 160, color: "#00bcd4" }}>{stat.title}</Typography>
                   <Typography variant="h4" fontWeight="bold" mt={1}>{stat.value}</Typography>
                 </Paper>
               </motion.div>
