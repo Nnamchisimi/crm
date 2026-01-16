@@ -658,8 +658,23 @@ app.post("/api/auth/signup", async (req, res) => {
 
             return crmNumber;
         };
-// 7️⃣ Send verification email
-const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
+
+        const crmNumber = await generateRandomCRMNumber();
+
+        // 5️⃣ Generate email verification token
+        const token = crypto.randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        // 6️⃣ Insert user into database
+        await pool.execute(
+            `INSERT INTO users 
+            (name, surname, username, email, phone_number, password, crm_number, is_verified, email_verification_token, email_verification_expires)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+            [name, surname, username, email, phoneNumber || null, hashedPassword, crmNumber, token, expires]
+        );
+
+        // 7️⃣ Send verification email
+        const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
 
 try {
     await transporter.sendMail({
@@ -691,6 +706,15 @@ res.status(201).json({
     crm_number: crmNumber
 });
 
+
+
+
+        // 8️⃣ Respond to frontend with CRM number
+        res.status(201).json({
+            success: true,
+            message: "Signup successful. Please check your email to verify your account.",
+            crm_number: crmNumber
+        });
 
     } catch (err) {
         console.error("Signup error:", err);
