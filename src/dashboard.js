@@ -37,10 +37,11 @@ const Dashboard = () => {
   const userEmail = localStorage.getItem("userEmail");
   const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
-  const handleSignOut = () => {
-    localStorage.clear();
-    navigate("/signin", { replace: true });
-  };
+const handleSignOut = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userEmail");
+  navigate("/signin", { replace: true });
+};
 
   const getClosestDateCount = () => {
     if (!activeCampaigns.length) return 0;
@@ -60,10 +61,22 @@ const Dashboard = () => {
 
   // Auth check
   useEffect(() => {
-    if (!userToken) navigate("/signin", { replace: true });
-    const { role } = jwtDecode(userToken || "");
-    if (role !== "user") navigate("/signin", { replace: true });
-  }, [navigate, userToken]);
+  if (!userToken) {
+    navigate("/signin", { replace: true });
+    return;
+  }
+
+  try {
+    const decoded = jwtDecode(userToken);
+    if (decoded.role !== "user") {
+      navigate("/signin", { replace: true });
+    }
+  } catch (err) {
+    console.error("Invalid token:", err);
+    navigate("/signin", { replace: true });
+  }
+}, [navigate, userToken]);
+
 
   // Fetch vehicles
   useEffect(() => {
