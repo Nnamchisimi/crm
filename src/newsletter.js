@@ -180,13 +180,14 @@ useEffect(() => {
   );
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        background: "linear-gradient(180deg, #000 0%, #111 100%)",
-        color: "white",
-        minHeight: "100vh",
-      }}
+        <Box
+            sx={{
+              display: "flex",
+              minHeight: "100vh",
+              background: "linear-gradient(180deg, #000 0%, #111 100%)",
+              color: "white",
+              overflowX: "hidden", // ✅ FIX
+            }}
     >
       <Box
         sx={{
@@ -227,7 +228,7 @@ useEffect(() => {
       </Box>
 
 
-      <Box sx={{ flex: 1, p: 4 }}>
+      <Box sx={{ flex: 1, p: 4, WebkitOverflowScrolling: "touch" }}>
                <Button
                                     onClick={() => navigate("/dashboard")}
                                     sx={{ color: "#00bcd4", mb: 3 }}
@@ -274,6 +275,7 @@ useEffect(() => {
                   borderRadius: 3,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
+                  boxSizing:"border-box",
                 }}
               >
                 <Typography variant="h5" fontWeight="bold" gutterBottom>
