@@ -21,11 +21,12 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
@@ -35,12 +36,12 @@ const NotificationsPage = () => {
   const userEmail = localStorage.getItem("userEmail");
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userEmail");
+    localStorage.clear();
     sessionStorage.clear();
     navigate("/signin", { replace: true });
   };
 
+  /* 🔐 Auth Guard */
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/signin", { replace: true });
@@ -60,7 +61,9 @@ const NotificationsPage = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notifications/${userEmail}`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/notifications/${userEmail}`
+      );
       const data = await res.json();
       if (res.ok) setNotifications(data);
     } catch (err) {
@@ -104,19 +107,22 @@ const NotificationsPage = () => {
       >
         AutoCRM
       </Typography>
+
       <Divider sx={{ mb: 2 }} />
+
       <List>
         {sidebarItems.map((item, idx) => (
           <ListItem
             key={idx}
             button
-            sx={{
-              color: item.path === "/notifications" ? "#00bcd4" : "#ccc",
-              "&:hover": { color: "#00bcd4" },
-            }}
             onClick={() => {
               item.onClick ? item.onClick() : navigate(item.path);
               setMobileOpen(false);
+            }}
+            sx={{
+              color:
+                item.path === "/notifications" ? "#00bcd4" : "#ccc",
+              "&:hover": { color: "#00bcd4" },
             }}
           >
             {item.icon}
@@ -138,9 +144,17 @@ const NotificationsPage = () => {
         color: "white",
       }}
     >
-      {/* Mobile Menu */}
-      <Box sx={{ position: "fixed", top: 10, right: 10, zIndex: 1200, display: { md: "none" } }}>
-        <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
+      {/* Mobile menu button */}
+      <Box
+        sx={{
+          position: "fixed",
+          top: 10,
+          right: 10,
+          zIndex: 1200,
+          display: { md: "none" },
+        }}
+      >
+        <IconButton color="inherit" onClick={() => setMobileOpen(true)}>
           <MenuIcon />
         </IconButton>
       </Box>
@@ -151,7 +165,10 @@ const NotificationsPage = () => {
         anchor="right"
         sx={{
           display: { md: "none" },
-          "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" },
+          "& .MuiDrawer-paper": {
+            background: "rgba(0,0,0,0.95)",
+            color: "white",
+          },
         }}
       >
         {drawer}
@@ -161,7 +178,6 @@ const NotificationsPage = () => {
       <Box
         sx={{
           width: 250,
-          p: 3,
           display: { xs: "none", md: "block" },
           background: "rgba(255,255,255,0.05)",
           borderRight: "1px solid rgba(255,255,255,0.1)",
@@ -170,15 +186,15 @@ const NotificationsPage = () => {
         {drawer}
       </Box>
 
-      {/* MAIN CONTENT */}
+      {/* Main content */}
       <Box
         sx={{
           flex: 1,
           minWidth: 0,
+          width: "100%",
           p: { xs: 2, sm: 4 },
           maxWidth: 1100,
           mx: "auto",
-          width: "100%",
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
@@ -194,41 +210,32 @@ const NotificationsPage = () => {
         </Typography>
 
         <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-          Stay updated with your vehicle maintenance, service alerts, and newsletters.
+          Stay updated with your vehicle maintenance, service alerts,
+          and newsletters.
         </Typography>
 
-        <Box
-          sx={{
-            maxWidth: "100%",
-            overflowX: "auto",
-            mb: 3,
-          }}
-        >
-            <Tabs
-              value={filter}
-              onChange={(e, val) => setFilter(val)}
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              textColor="secondary"
-              indicatorColor="secondary"
-              sx={{
-                "& .MuiTabs-scroller": {
-                  overflowX: "auto",
-                },
-              }}
-            >
-              <Tab label={`All (${notifications.length})`} value="All" />
-              <Tab
-                label={`Unread (${notifications.filter((n) => !n.is_read).length})`}
-                value="Unread"
-              />
-              <Tab label="Service" value="Service" />
-              <Tab label="Campaigns" value="Campaign" />
-            </Tabs>
-          </Box>
+        {/* ✅ SCROLLABLE TABS (NO PAGE OVERFLOW) */}
+        <Box sx={{ maxWidth: "100%", overflowX: "auto", mb: 3 }}>
+          <Tabs
+            value={filter}
+            onChange={(e, val) => setFilter(val)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            textColor="secondary"
+            indicatorColor="secondary"
+          >
+            <Tab label={`All (${notifications.length})`} value="All" />
+            <Tab
+              label={`Unread (${notifications.filter((n) => !n.is_read).length})`}
+              value="Unread"
+            />
+            <Tab label="Service" value="Service" />
+            <Tab label="Campaigns" value="Campaign" />
+          </Tabs>
+        </Box>
 
-
+        {/* Notifications list */}
         <Paper
           sx={{
             p: 3,
@@ -250,18 +257,25 @@ const NotificationsPage = () => {
 
           <List>
             {filteredNotifications.map((notif) => (
-              <motion.div key={notif.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <motion.div
+                key={notif.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
                 <ListItem
                   sx={{
                     mb: 1,
                     borderRadius: 1,
                     backgroundColor: notif.is_read
                       ? "rgba(255,255,255,0.05)"
-                      : "rgba(0,188,212,0.1)",
+                      : "rgba(0,188,212,0.12)",
                   }}
                   secondaryAction={
                     !notif.is_read && (
-                      <IconButton onClick={() => markAsRead(notif.id)} sx={{ color: "#00bcd4" }}>
+                      <IconButton
+                        onClick={() => markAsRead(notif.id)}
+                        sx={{ color: "#00bcd4" }}
+                      >
                         <DoneIcon />
                       </IconButton>
                     )
