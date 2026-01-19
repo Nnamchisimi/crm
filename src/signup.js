@@ -26,9 +26,9 @@ export const SignUp = () => {
 
   const navigate = useNavigate();
 
+  // --- Normal signup ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const fullNumber = `+${countryCode}${phoneNumber}`;
 
     const userData = {
@@ -47,14 +47,12 @@ export const SignUp = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
       });
-
       const data = await res.json();
 
       if (data.success) {
+        // Save CRM number and navigate
         localStorage.setItem("crmNumber", data.crm_number);
-
         alert("Signup successful! Check your email for verification.");
-
         navigate("/signin");
       } else {
         alert(data.error || data.message || "Signup failed");
@@ -65,15 +63,15 @@ export const SignUp = () => {
     }
   };
 
-  // ✅ GOOGLE SIGNUP HANDLER
+  // --- Google signup ---
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
+      if (!credentialResponse?.credential) return;
+
       const res = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_token: credentialResponse.credential,
-        }),
+        body: JSON.stringify({ id_token: credentialResponse.credential }),
       });
 
       const data = await res.json();
@@ -84,15 +82,27 @@ export const SignUp = () => {
         setSurname(data.surname || "");
         setIsGoogleUser(true);
 
+        // Save token
         localStorage.setItem("token", data.token);
-       localStorage.setItem(
-                              "userEmail",
-                              data.email || data.user?.email
-                            );
+        localStorage.setItem(
+          "userEmail",
+          data.email || data.user?.email
+        );
 
+        // Save CRM number if this is a new Google user
+        if (data.crm_number) {
+          localStorage.setItem("crmNumber", data.crm_number);
+        }
 
+        // Resolve role safely
+        const role =
+          data.role || data.user?.role || (data.token ? jwtDecode(data.token).role : null);
+        localStorage.setItem("role", role);
 
-        navigate("/dashboard");
+        // Navigate based on role
+        if (role === "admin") navigate("/admin");
+        else if (role === "user") navigate("/dashboard");
+        else navigate("/signin");
       } else {
         alert(data.message || "Google signup failed");
       }
@@ -146,7 +156,7 @@ export const SignUp = () => {
               Sign up
             </Typography>
 
-            {/* 🔵 GOOGLE SIGN UP */}
+            {/* Google signup */}
             <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
@@ -161,7 +171,7 @@ export const SignUp = () => {
               or
             </Divider>
 
-            {/* NORMAL SIGNUP FORM */}
+            {/* Manual signup form */}
             <Box
               component="form"
               sx={{ display: "flex", flexDirection: "column", gap: 2 }}
