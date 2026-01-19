@@ -186,7 +186,7 @@ useEffect(() => {
               minHeight: "100vh",
               background: "linear-gradient(180deg, #000 0%, #111 100%)",
               color: "white",
-              overflowX: "hidden", // ✅ FIX
+              overflowX: "hidden",
             }}
     >
       <Box
@@ -228,7 +228,7 @@ useEffect(() => {
       </Box>
 
 
-      <Box sx={{ flex: 1, p: 4, WebkitOverflowScrolling: "touch" }}>
+      <Box sx={{  flex: 1, minWidth: 0,p: { xs: 2, sm: 4 }, WebkitOverflowScrolling: "touch" }}>
                <Button
                                     onClick={() => navigate("/dashboard")}
                                     sx={{ color: "#00bcd4", mb: 3 }}
@@ -264,18 +264,21 @@ useEffect(() => {
           special offers.
         </Typography>
 
-        <Grid container justifyContent="center" sx={{ mb: 4 }}>
+        <Grid  container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
+
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
               <Paper
                 sx={{
-                  width: { xs: 420, sm: 700, md: 1000, lg: 1200 },
                   maxWidth: "100%",
                   p: 4,
                   borderRadius: 3,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
                   boxSizing:"border-box",
+                  width: "100%",
+                  maxWidth: 900,
+
                 }}
               >
                 <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -408,7 +411,7 @@ useEffect(() => {
           </Grid>
         </Grid>
 
-        <Grid container justifyContent="center">
+              <Grid  container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
               <Paper
