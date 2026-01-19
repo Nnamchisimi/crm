@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -25,8 +25,6 @@ import EmailIcon from "@mui/icons-material/Email";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 const drawerWidth = 240;
-
-// Dynamically set API base URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 const CampaignsPage = () => {
@@ -46,30 +44,24 @@ const CampaignsPage = () => {
     navigate("/signin", { replace: true });
   };
 
-  // Redirect if token invalid or role mismatch
   useEffect(() => {
     if (!userToken) {
       navigate("/signin", { replace: true });
       return;
     }
-
     const { role } = jwtDecode(userToken);
-    if (role !== "user") {
-      navigate("/signin", { replace: true });
-    }
+    if (role !== "user") navigate("/signin", { replace: true });
   }, [navigate, userToken]);
 
-  // Fetch campaigns
   useEffect(() => {
     const fetchCampaigns = async () => {
       if (!userEmail || !userToken) return;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/campaigns?email=${userEmail}`, {
-          headers: {
-            Authorization: `Bearer ${userToken}`,
-          },
-        });
+        const res = await fetch(
+          `${API_BASE_URL}/api/campaigns?email=${userEmail}`,
+          { headers: { Authorization: `Bearer ${userToken}` } }
+        );
 
         if (res.status === 401 || res.status === 403) {
           handleSignOut();
@@ -116,14 +108,17 @@ const CampaignsPage = () => {
 
   const bookCampaign = async (campaign) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/campaigns/${campaign.id}/book`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify({ email: userEmail }),
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/campaigns/${campaign.id}/book`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ email: userEmail }),
+        }
+      );
 
       const result = await res.json();
       if (!res.ok) return alert(result.message || "Failed to book campaign");
@@ -137,14 +132,17 @@ const CampaignsPage = () => {
 
   const cancelCampaign = async (campaign) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/campaigns/${campaign.id}/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify({ email: userEmail }),
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/campaigns/${campaign.id}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ email: userEmail }),
+        }
+      );
 
       const result = await res.json();
       if (!res.ok) return alert(result.message || "Failed to cancel campaign");
@@ -210,10 +208,17 @@ const CampaignsPage = () => {
         minHeight: "100vh",
         background: "linear-gradient(180deg, #000 0%, #111 100%)",
         color: "white",
+        overflowX: "hidden",
       }}
     >
       <Box
-        sx={{ position: "fixed", top: 10, right: 10, display: { xs: "block", md: "none" }, zIndex: 1200 }}
+        sx={{
+          position: "fixed",
+          top: 10,
+          right: 10,
+          display: { xs: "block", md: "none" },
+          zIndex: 1200,
+        }}
       >
         <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)}>
           <MenuIcon />
@@ -226,7 +231,10 @@ const CampaignsPage = () => {
         anchor="right"
         sx={{
           display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.9)", color: "white" },
+          "& .MuiDrawer-paper": {
+            background: "rgba(0,0,0,0.9)",
+            color: "white",
+          },
         }}
       >
         {drawer}
@@ -244,7 +252,15 @@ const CampaignsPage = () => {
         {drawer}
       </Box>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 4, ml: { sm: `${drawerWidth}px` } }}>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 4,
+          ml: { md: `${drawerWidth}px` },
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         <Button onClick={() => navigate("/dashboard")} sx={{ color: "#00bcd4", mb: 3 }}>
           ← Back to Dashboard
         </Button>
@@ -268,10 +284,10 @@ const CampaignsPage = () => {
           Active campaigns and all available campaigns for your vehicles
         </Typography>
 
-        {/* Active Campaigns */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Your Active Campaigns
         </Typography>
+
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {activeCampaigns.length === 0 && <Typography>No active campaigns currently.</Typography>}
           {activeCampaigns.map((c) => (
@@ -282,6 +298,8 @@ const CampaignsPage = () => {
                     p: 3,
                     width: 360,
                     height: 190,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
                     borderRadius: 3,
                     background: "rgba(255,255,255,0.05)",
                   }}
@@ -297,12 +315,7 @@ const CampaignsPage = () => {
                   <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.7)" }}>
                     Valid until: {c.validUntil}
                   </Typography>
-                  <Button
-                    sx={{ mt: 2 }}
-                    variant="contained"
-                    color="secondary"
-                    onClick={() => cancelCampaign(c)}
-                  >
+                  <Button sx={{ mt: 2 }} variant="contained" color="secondary" onClick={() => cancelCampaign(c)}>
                     Cancel Appointment
                   </Button>
                 </Paper>
@@ -313,10 +326,10 @@ const CampaignsPage = () => {
 
         <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.2)" }} />
 
-        {/* All Available Campaigns */}
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           All Available Campaigns
         </Typography>
+
         <Grid container spacing={3}>
           {allCampaigns.map((c) => (
             <Grid item xs={12} md={6} key={c.id}>
@@ -326,6 +339,8 @@ const CampaignsPage = () => {
                     p: 3,
                     width: 360,
                     height: 190,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
                     borderRadius: 3,
                     background: "rgba(255,255,255,0.05)",
                   }}
