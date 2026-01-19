@@ -197,16 +197,37 @@ const NotificationsPage = () => {
           Stay updated with your vehicle maintenance, service alerts, and newsletters.
         </Typography>
 
-        <Tabs
-          value={filter}
-          onChange={(e, val) => setFilter(val)}
-          sx={{ mb: 3 }}
+        <Box
+          sx={{
+            maxWidth: "100%",
+            overflowX: "auto",
+            mb: 3,
+          }}
         >
-          <Tab label={`All (${notifications.length})`} value="All" />
-          <Tab label={`Unread (${notifications.filter(n => !n.is_read).length})`} value="Unread" />
-          <Tab label="Service" value="Service" />
-          <Tab label="Campaigns" value="Campaign" />
-        </Tabs>
+            <Tabs
+              value={filter}
+              onChange={(e, val) => setFilter(val)}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
+              textColor="secondary"
+              indicatorColor="secondary"
+              sx={{
+                "& .MuiTabs-scroller": {
+                  overflowX: "auto",
+                },
+              }}
+            >
+              <Tab label={`All (${notifications.length})`} value="All" />
+              <Tab
+                label={`Unread (${notifications.filter((n) => !n.is_read).length})`}
+                value="Unread"
+              />
+              <Tab label="Service" value="Service" />
+              <Tab label="Campaigns" value="Campaign" />
+            </Tabs>
+          </Box>
+
 
         <Paper
           sx={{
