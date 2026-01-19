@@ -534,8 +534,9 @@ const BookService = () => {
                                             onClick={() => setFormData({ ...formData, vehicle })}
                                             sx={{
                                                 p: 1,
-                                                 width: 300,
-                                                 height: 170,
+                                                 width: "100%",
+                                                maxWidth: 300,
+                                                height: 170,
                                                 borderRadius: 3,
                                                 background: formData.vehicle?.id === vehicle.id 
                                                     ? "rgba(0,188,212,0.2)"
@@ -587,8 +588,10 @@ const BookService = () => {
                                                 sx={{
                                                     p: 0.5,
                                                     borderRadius: 3,
-                                                     width: 150,
-                                                      height: 150,
+                                                    width: "100%",
+                                                    maxWidth: 150,
+                                                    height: 150,
+
                                                     background: formData.branch?.id === branch.id ? "rgba(0,188,212,0.2)" : "rgba(255,255,255,0.05)",
                                                     border: `2px solid ${formData.branch?.id === branch.id ? "#00bcd4" : "rgba(255,255,255,0.1)"}`,
                                                     "&:hover": { background: "rgba(255,255,255,0.1)", cursor: "pointer" },
@@ -891,7 +894,7 @@ const BookService = () => {
     };
 
 return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#121212', color: 'white' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#121212', color: 'white', overflowX: 'hidden', }}>
 
         <Box sx={{ width: 250, display: { xs: 'none', md: 'block' } }}>
             {drawerContent}
