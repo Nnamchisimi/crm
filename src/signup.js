@@ -30,7 +30,6 @@ export const SignUp = () => {
     e.preventDefault();
 
     const fullNumber = `+${countryCode}${phoneNumber}`;
-    console.log("Submitting phone number:", fullNumber);
 
     const userData = {
       name,
@@ -42,8 +41,6 @@ export const SignUp = () => {
       is_verified: isGoogleUser ? 1 : 0,
     };
 
-    console.log("Submitting signup data:", userData);
-
     try {
       const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
@@ -52,69 +49,60 @@ export const SignUp = () => {
       });
 
       const data = await res.json();
-      console.log("Signup response:", data);
 
       if (data.success) {
-        console.log("✅ Signup successful!");
-        console.log("Generated CRM Number:", data.crm_number);
-
         localStorage.setItem("crmNumber", data.crm_number);
 
-        alert(
-          "Signup successful! You will now be redirected to verify your email."
-        );
+        alert("Signup successful! Check your email for verification.");
 
-        // ✅ Redirect to verification page
-        if (data.token) {
-          window.location.href = `/#verify-email?token=${data.token}`;
-        } else {
-          // Safety fallback
-          navigate("/signin");
-        }
+        navigate("/signin");
       } else {
-        console.error("❌ Signup failed:", data.error || data.message);
         alert(data.error || data.message || "Signup failed");
       }
     } catch (err) {
-      console.error("❌ Signup error:", err);
-      alert("Something went wrong. Please try again.");
+      console.error(err);
+      alert("Something went wrong");
     }
   };
 
+  // ✅ GOOGLE SIGNUP HANDLER
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const res = await fetch("http://localhost:3007/api/auth/google", {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
+        body: JSON.stringify({
+          id_token: credentialResponse.credential,
+        }),
       });
 
       const data = await res.json();
-      console.log("Google signup response:", data);
 
       if (data.success) {
         setEmail(data.email || "");
-        setUsername(data.username || "");
         setName(data.name || "");
         setSurname(data.surname || "");
         setIsGoogleUser(true);
 
-        if (data.crm_number) {
-          localStorage.setItem("crmNumber", data.crm_number);
-        }
+        localStorage.setItem("token", data.token);
+       localStorage.setItem(
+                              "userEmail",
+                              data.email || data.user?.email
+                            );
 
-        localStorage.setItem("userEmail", data.email);
+
+
         navigate("/dashboard");
       } else {
-        console.error("❌ Google signup failed:", data.error || data.message);
+        alert(data.message || "Google signup failed");
       }
     } catch (err) {
-      console.error("❌ Google login error:", err);
+      console.error("Google error:", err);
     }
   };
 
   const handleGoogleError = () => {
-    console.error("❌ Google Login Failed");
+    console.error("Google Login Failed");
   };
 
   return (
@@ -158,14 +146,29 @@ export const SignUp = () => {
               Sign up
             </Typography>
 
+            {/* 🔵 GOOGLE SIGN UP */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="filled_black"
+                size="large"
+                width="300"
+              />
+            </Box>
+
+            <Divider sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>
+              or
+            </Divider>
+
+            {/* NORMAL SIGNUP FORM */}
             <Box
               component="form"
-              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3 }}
+              sx={{ display: "flex", flexDirection: "column", gap: 2 }}
               onSubmit={handleSubmit}
             >
               <TextField
                 label="Name"
-                fullWidth
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -175,7 +178,6 @@ export const SignUp = () => {
 
               <TextField
                 label="Surname"
-                fullWidth
                 required
                 value={surname}
                 onChange={(e) => setSurname(e.target.value)}
@@ -193,7 +195,6 @@ export const SignUp = () => {
                     border: "1px solid #555",
                     borderRadius: "4px",
                     padding: "0 8px",
-                    minWidth: "80px",
                   }}
                 >
                   <option value="1">🇺🇸 +1</option>
@@ -216,48 +217,43 @@ export const SignUp = () => {
 
               <TextField
                 label="Email"
-                fullWidth
                 required
                 value={email}
+                disabled={isGoogleUser}
                 onChange={(e) => setEmail(e.target.value)}
                 InputLabelProps={{ style: { color: "#aaa" } }}
                 InputProps={{ style: { color: "white" } }}
-                disabled={isGoogleUser}
               />
 
               <TextField
                 label="Username"
-                fullWidth
                 required
                 value={username}
+                disabled={isGoogleUser}
                 onChange={(e) => setUsername(e.target.value)}
                 InputLabelProps={{ style: { color: "#aaa" } }}
                 InputProps={{ style: { color: "white" } }}
-                disabled={isGoogleUser}
               />
 
               <TextField
                 label="Password"
                 type="password"
                 required={!isGoogleUser}
+                disabled={isGoogleUser}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 InputLabelProps={{ style: { color: "#aaa" } }}
                 InputProps={{ style: { color: "white" } }}
-                disabled={isGoogleUser}
               />
 
               {!isGoogleUser && (
                 <Button
                   type="submit"
                   variant="contained"
-                  fullWidth
                   sx={{
                     mt: 2,
                     py: 1.5,
-                    fontWeight: 600,
                     backgroundColor: "#00bcd4",
-                    "&:hover": { backgroundColor: "#00acc1" },
                   }}
                 >
                   Sign up
@@ -265,14 +261,10 @@ export const SignUp = () => {
               )}
             </Box>
 
-            <Divider sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>
-              or
-            </Divider>
-
             <Typography
               variant="body2"
               textAlign="center"
-              sx={{ mt: 3, color: "rgba(255, 255, 255, 1)" }}
+              sx={{ mt: 3, color: "white" }}
             >
               Already have an account?{" "}
               <Link to="/signin" style={{ color: "#00bcd4" }}>

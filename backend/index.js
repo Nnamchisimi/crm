@@ -555,63 +555,111 @@ app.post("/api/bookings/:id/cancel", verifyToken, async (req, res) => {
 
 app.post("/api/auth/google", async (req, res) => {
     try {
-        const { id_token, username, name, surname, phoneNumber } = req.body;
-        if (!id_token) return res.status(400).json({ message: "Missing ID token" });
+        const { id_token } = req.body;
 
+        if (!id_token) {
+            return res.status(400).json({ message: "Missing Google ID token" });
+        }
+
+        // 1️⃣ Verify Google token
         const ticket = await client.verifyIdToken({
             idToken: id_token,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
+
         const payload = ticket.getPayload();
 
         const google_id = payload.sub;
         const email = payload.email;
-        const is_verified = 1;
+        const name = payload.given_name || "";
+        const surname = payload.family_name || "";
 
-        let [existing] = await pool.query(
-            "SELECT * FROM users WHERE google_id = ? OR email = ?",
-            [google_id, email]
+        // 2️⃣ Check if user exists by email
+        const [existingUsers] = await pool.query(
+            "SELECT * FROM users WHERE email = ?",
+            [email]
         );
 
-        if (existing.length === 0) {
-            await pool.query(
+        let user;
+
+        // 3️⃣ If user does NOT exist → CREATE Google user
+        if (existingUsers.length === 0) {
+
+            // 🔹 Generate unique username
+            const baseUsername = email.split("@")[0].toLowerCase();
+            let username = baseUsername;
+            let counter = 1;
+
+            while (true) {
+                const [rows] = await pool.query(
+                    "SELECT id FROM users WHERE username = ?",
+                    [username]
+                );
+                if (rows.length === 0) break;
+                username = `${baseUsername}${counter++}`;
+            }
+
+            const [result] = await pool.execute(
                 `INSERT INTO users 
-                (name, surname, username, email, google_id, phone_number, is_verified) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [name, surname, username, email, google_id, phoneNumber || null, is_verified]
+                (name, surname, username, email, google_id, is_verified)
+                VALUES (?, ?, ?, ?, ?, 1)`,
+                [name, surname, username, email, google_id]
             );
-            console.log(`🆕 New Google user inserted: ${email}`);
-            
-            [existing] = await pool.query(
-                "SELECT * FROM users WHERE email = ?", 
-                [email]
+
+            const [createdUser] = await pool.query(
+                "SELECT * FROM users WHERE id = ?",
+                [result.insertId]
             );
+
+            user = createdUser[0];
+            console.log("🆕 Google user created:", email);
+
         } else {
-            console.log(` Google user already exists: ${email}`);
+            user = existingUsers[0];
+
+            // 4️⃣ If manual user exists → LINK Google account
+            if (!user.google_id) {
+                await pool.execute(
+                    "UPDATE users SET google_id = ?, is_verified = 1 WHERE id = ?",
+                    [google_id, user.id]
+                );
+
+                user.google_id = google_id;
+                user.is_verified = 1;
+
+                console.log("🔗 Google linked to existing user:", email);
+            } else {
+                console.log("✅ Google login successful:", email);
+            }
         }
 
-        const user = existing[0];
-
+        // 5️⃣ Create JWT
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role , name: user.name , surname : user.surname}, 
+            {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+            },
             process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1h" }
         );
 
-        console.log("Google user logged in:", user.email,user.name,user.surname);
-
-        res.json({ 
-            success: true, 
-            token, 
-            role: user.role, 
-            email: user.email, 
-            name: user.name, 
-            surname: user.surname 
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                surname: user.surname,
+                email: user.email,
+                username: user.username,
+                role: user.role
+            }
         });
 
-    } catch (err) {
-        console.error("❌ Google login error:", err);
-        res.status(500).json({ message: err.message || "Google login failed" });
+    } catch (error) {
+        console.error("❌ Google login error:", error);
+        res.status(500).json({ message: "Google login failed" });
     }
 });
 
