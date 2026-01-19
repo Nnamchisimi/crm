@@ -581,7 +581,8 @@ const BookService = () => {
                                     setFormData({...formData, branch: selectedBranch});
                                 }}>
 
-                            <Grid container spacing={3}>
+                            <Grid container spacing={3} sx={{ width: '100%', margin: 0 }}>
+
                                     {branch.map((branch) => (
                                         <Grid item xs={6} sm={6} md={4} key={branch.id}>
                                             <Paper
@@ -655,7 +656,8 @@ const BookService = () => {
                                     setFormData({ ...formData, service: selectedService });
                                 }}
                             >
-                              <Grid container spacing={2}>
+                              <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+
                                         {serviceTypes.map((service) => (
                                             <Grid 
                                                 item 
@@ -749,7 +751,8 @@ const BookService = () => {
                         <Typography variant="h6" gutterBottom sx={{ color: "#00bcd4" }}>
                             Select Date and Time
                         </Typography>
-                        <Grid container spacing={4}>
+                        <Grid container spacing={4} sx={{ width: '100%', margin: 0 }}>
+
                             <Grid item xs={12} md={7}>
                                 <CalendarMock 
                                     selectedDate={formData.date}
@@ -778,7 +781,8 @@ const BookService = () => {
                                 ) : availableTimeSlots.length === 0 ? (
                                     <Typography sx={{ color: "rgba(255,255,255,0.7)", my: 2 }}>No available slots for the selected date.</Typography>
                                 ) : (
-                                    <Grid container spacing={1}>
+                                    <Grid container spacing={1} sx={{ width: '100%', margin: 0 }}>
+
                                         {availableTimeSlots.map((slot) => (
                                             <Grid item key={slot.slot_time}>
                                                 <Chip
@@ -835,7 +839,8 @@ const BookService = () => {
                             </Typography>
                             <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.1)" }} />
 
-                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+
                                 <Grid item xs={12} sm={4}>
                                     <CarRental sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
                                     <Typography component="span" fontWeight="bold">Vehicle:</Typography>
@@ -845,7 +850,8 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
 
-                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                           <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+
                                 <Grid item xs={12} sm={4}>
                                    <LocationOn sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
                                     <Typography component="span" fontWeight="bold">Branch:</Typography>
@@ -855,7 +861,8 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
                             
-                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+
                                 <Grid item xs={12} sm={4}>
                                     {getIconComponent(formData.service?.type)}
                                     <Typography component="span" fontWeight="bold">Service:</Typography>
@@ -865,7 +872,8 @@ const BookService = () => {
                                 </Grid>
                             </Grid>
 
-                            <Grid container spacing={2}>
+                            <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+
                                 <Grid item xs={12} sm={4}>
                                     <EventAvailable sx={{ mr: 1, verticalAlign: 'middle', color: '#00bcd4' }} />
                                     <Typography component="span" fontWeight="bold">Date & Time:</Typography>
@@ -894,7 +902,18 @@ const BookService = () => {
     };
 
 return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#121212', color: 'white', overflowX: 'hidden', }}>
+            <Box
+            sx={{
+                display: 'flex',
+                width: '100%',
+                maxWidth: '100vw',
+                minHeight: '100vh',
+                background: '#121212',
+                color: 'white',
+                overflowX: 'hidden',
+            }}
+            >
+
 
         <Box sx={{ width: 250, display: { xs: 'none', md: 'block' } }}>
             {drawerContent}
