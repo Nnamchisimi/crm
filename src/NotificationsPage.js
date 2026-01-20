@@ -12,6 +12,8 @@ import {
   IconButton,
   Divider,
   Drawer,
+  Button,
+  CircularProgress
 } from "@mui/material";
 import DoneIcon from "@mui/icons-material/Done";
 import { jwtDecode } from "jwt-decode";
@@ -25,30 +27,82 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:3007";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("All");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const userEmail = localStorage.getItem("userEmail");
+  const [loading, setLoading] = useState(true);
+
+  // Strictly using sessionStorage
+  const userEmail = sessionStorage.getItem("userEmail");
+  const userToken = sessionStorage.getItem("token");
 
   const handleSignOut = () => {
-    localStorage.clear();
-    sessionStorage.clear();
+    sessionStorage.clear(); // Clears session data
     navigate("/signin", { replace: true });
   };
 
-  /* 🔐 Auth Guard */
+  /* 🔐 Auth Guard & Initial Fetch */
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return navigate("/signin", { replace: true });
+    if (!userToken) {
+      navigate("/signin", { replace: true });
+      return;
+    }
 
-    const { role } = jwtDecode(token);
-    if (role !== "user") navigate("/signin", { replace: true });
-  }, [navigate]);
+    try {
+      const { role } = jwtDecode(userToken);
+      if (role !== "user") {
+        navigate("/signin", { replace: true });
+        return;
+      }
+      fetchNotifications();
+    } catch (err) {
+      console.error("Auth error:", err);
+      handleSignOut();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, userToken]);
+
+  const fetchNotifications = async () => {
+    if (!userEmail || !userToken) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${userEmail}`, {
+        headers: {
+          "Authorization": `Bearer ${userToken}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) setNotifications(data);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/mark-read/${id}`, { 
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${userToken}`
+        }
+      });
+      if (res.ok) fetchNotifications();
+    } catch (err) {
+      console.error("Update error:", err);
+    }
+  };
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === "All") return true;
+    if (filter === "Unread") return !n.is_read;
+    return n.type === filter;
+  });
 
   const sidebarItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
@@ -59,70 +113,27 @@ const NotificationsPage = () => {
     { text: "Sign Out", icon: <ExitToAppIcon />, onClick: handleSignOut },
   ];
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/notifications/${userEmail}`
-      );
-      const data = await res.json();
-      if (res.ok) setNotifications(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const markAsRead = async (id) => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/notifications/mark-read/${id}`,
-        { method: "POST" }
-      );
-      if (res.ok) fetchNotifications();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const filteredNotifications = notifications.filter((n) => {
-    if (filter === "All") return true;
-    if (filter === "Unread") return !n.is_read;
-    return n.type === filter;
-  });
-
   const drawer = (
     <Box sx={{ width: 250, p: 3 }}>
-      <Typography
-        variant="h5"
-        fontWeight="bold"
-        gutterBottom
-        sx={{
-          background: "linear-gradient(90deg, #fff, #00bcd4)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}
-      >
+      <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ background: "linear-gradient(90deg, #fff, #00bcd4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
         AutoCRM
       </Typography>
-
-      <Divider sx={{ mb: 2 }} />
-
+      <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.1)" }} />
       <List>
         {sidebarItems.map((item, idx) => (
           <ListItem
             key={idx}
-            button
+            component="div"
             onClick={() => {
               item.onClick ? item.onClick() : navigate(item.path);
               setMobileOpen(false);
             }}
-            sx={{
-              color:
-                item.path === "/notifications" ? "#00bcd4" : "#ccc",
-              "&:hover": { color: "#00bcd4" },
+            sx={{ 
+              cursor: "pointer",
+              borderRadius: 1,
+              mb: 0.5,
+              color: item.path === "/notifications" ? "#00bcd4" : "#ccc", 
+              "&:hover": { color: "#00bcd4", backgroundColor: "rgba(255,255,255,0.05)" } 
             }}
           >
             {item.icon}
@@ -134,161 +145,64 @@ const NotificationsPage = () => {
   );
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        width: "100vw",
-        minHeight: "100vh",
-        overflowX: "hidden",
-        background: "linear-gradient(180deg, #000 0%, #111 100%)",
-        color: "white",
-      }}
-    >
-      {/* Mobile menu button */}
-      <Box
-        sx={{
-          position: "fixed",
-          top: 10,
-          right: 10,
-          zIndex: 1200,
-          display: { md: "none" },
-        }}
-      >
-        <IconButton color="inherit" onClick={() => setMobileOpen(true)}>
-          <MenuIcon />
-        </IconButton>
+    <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh", background: "linear-gradient(180deg, #000 0%, #111 100%)", color: "white" }}>
+      <Box sx={{ position: "fixed", top: 10, right: 10, zIndex: 1200, display: { md: "none" } }}>
+        <IconButton color="inherit" onClick={() => setMobileOpen(true)}><MenuIcon /></IconButton>
       </Box>
 
-      <Drawer
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        anchor="right"
-        sx={{
-          display: { md: "none" },
-          "& .MuiDrawer-paper": {
-            background: "rgba(0,0,0,0.95)",
-            color: "white",
-          },
-        }}
-      >
+      <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} anchor="right" sx={{ "& .MuiDrawer-paper": { background: "rgba(0,0,0,0.95)", color: "white" } }}>
         {drawer}
       </Drawer>
 
-      {/* Sidebar */}
-      <Box
-        sx={{
-          width: 250,
-          display: { xs: "none", md: "block" },
-          background: "rgba(255,255,255,0.05)",
-          borderRight: "1px solid rgba(255,255,255,0.1)",
-        }}
-      >
+      <Box sx={{ width: 250, display: { xs: "none", md: "block" }, borderRight: "1px solid rgba(255,255,255,0.1)" }}>
         {drawer}
       </Box>
 
-      {/* Main content */}
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          width: "100%",
-          p: { xs: 2, sm: 4 },
-          maxWidth: 1100,
-          mx: "auto",
-        }}
-      >
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-          <Chip
-            label={userEmail}
-            variant="outlined"
-            sx={{ color: "#00bcd4", borderColor: "#00bcd4" }}
-          />
+      <Box sx={{ flex: 1, p: { xs: 2, sm: 4 }, maxWidth: 1100, mx: "auto" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+           <Button onClick={() => navigate("/dashboard")} sx={{ color: "#00bcd4" }}>← Back</Button>
+           <Chip label={userEmail || "User"} variant="outlined" sx={{ color: "#00bcd4", borderColor: "#00bcd4" }} />
         </Box>
 
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Notifications
-        </Typography>
+        <Typography variant="h4" fontWeight="bold">Notifications</Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>Vehicle maintenance and service alerts.</Typography>
 
-        <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-          Stay updated with your vehicle maintenance, service alerts,
-          and newsletters.
-        </Typography>
-
-        {/* ✅ SCROLLABLE TABS (NO PAGE OVERFLOW) */}
         <Box sx={{ maxWidth: "100%", overflowX: "auto", mb: 3 }}>
-          <Tabs
-            value={filter}
-            onChange={(e, val) => setFilter(val)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            textColor="secondary"
-            indicatorColor="secondary"
-          >
+          <Tabs value={filter} onChange={(e, val) => setFilter(val)} textColor="secondary" indicatorColor="secondary" variant="scrollable">
             <Tab label={`All (${notifications.length})`} value="All" />
-            <Tab
-              label={`Unread (${notifications.filter((n) => !n.is_read).length})`}
-              value="Unread"
-            />
+            <Tab label={`Unread (${notifications.filter(n => !n.is_read).length})`} value="Unread" />
             <Tab label="Service" value="Service" />
             <Tab label="Campaigns" value="Campaign" />
           </Tabs>
         </Box>
 
-        {/* Notifications list */}
-        <Paper
-          sx={{
-            p: 3,
-            width: "100%",
-            maxWidth: 900,
-            mx: "auto",
-            borderRadius: 3,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            maxHeight: "60vh",
-            overflowY: "auto",
-          }}
-        >
-          {filteredNotifications.length === 0 && (
-            <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
-              No notifications to show.
-            </Typography>
+        <Paper sx={{ p: 3, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", minHeight: "200px", display: "flex", flexDirection: "column" }}>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", my: 5 }}><CircularProgress color="secondary" /></Box>
+          ) : filteredNotifications.length === 0 ? (
+            <Typography sx={{ textAlign: "center", color: "rgba(255,255,255,0.5)", my: 5 }}>No notifications found.</Typography>
+          ) : (
+            <List>
+              {filteredNotifications.map((notif) => (
+                <motion.div key={notif.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <ListItem
+                    sx={{
+                      mb: 1, borderRadius: 1,
+                      backgroundColor: notif.is_read ? "transparent" : "rgba(0,188,212,0.1)",
+                    }}
+                    secondaryAction={!notif.is_read && (
+                      <IconButton onClick={() => markAsRead(notif.id)} sx={{ color: "#00bcd4" }}><DoneIcon /></IconButton>
+                    )}
+                  >
+                    <ListItemText
+                      primary={<Typography fontWeight={notif.is_read ? "normal" : "bold"}>{`[${notif.type}] ${notif.title}`}</Typography>}
+                      secondary={<Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)" }}>{notif.message}</Typography>}
+                    />
+                  </ListItem>
+                </motion.div>
+              ))}
+            </List>
           )}
-
-          <List>
-            {filteredNotifications.map((notif) => (
-              <motion.div
-                key={notif.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <ListItem
-                  sx={{
-                    mb: 1,
-                    borderRadius: 1,
-                    backgroundColor: notif.is_read
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(0,188,212,0.12)",
-                  }}
-                  secondaryAction={
-                    !notif.is_read && (
-                      <IconButton
-                        onClick={() => markAsRead(notif.id)}
-                        sx={{ color: "#00bcd4" }}
-                      >
-                        <DoneIcon />
-                      </IconButton>
-                    )
-                  }
-                >
-                  <ListItemText
-                    primary={`[${notif.type}] ${notif.title}`}
-                    secondary={notif.message}
-                  />
-                </ListItem>
-              </motion.div>
-            ))}
-          </List>
         </Paper>
       </Box>
     </Box>

@@ -33,14 +33,18 @@ const CampaignsPage = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  const userEmail = localStorage.getItem("userEmail");
-  const userToken = localStorage.getItem("token");
+  // CHANGED: Switched from localStorage to sessionStorage
+  const userEmail = sessionStorage.getItem("userEmail");
+  const userToken = sessionStorage.getItem("token");
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userName");
+    // CHANGED: Clearing sessionStorage
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userEmail");
+    sessionStorage.removeItem("userName");
     sessionStorage.clear();
+    // Also clearing localStorage just in case old data exists
+    localStorage.clear(); 
     navigate("/signin", { replace: true });
   };
 
@@ -49,8 +53,12 @@ const CampaignsPage = () => {
       navigate("/signin", { replace: true });
       return;
     }
-    const { role } = jwtDecode(userToken);
-    if (role !== "user") navigate("/signin", { replace: true });
+    try {
+      const { role } = jwtDecode(userToken);
+      if (role !== "user") navigate("/signin", { replace: true });
+    } catch (err) {
+      handleSignOut();
+    }
   }, [navigate, userToken]);
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   Box,
   Typography,
@@ -47,6 +48,9 @@ export const Admin = () => {
 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+const API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:3007";
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -271,7 +275,8 @@ export const Admin = () => {
                 }
 
                 try {
-                  const response = await fetch("http://localhost:3007/api/newsletter/send", {
+                  const response = await fetch(`${API_URL}/api/newsletter/send`, {
+
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
 
@@ -554,9 +559,7 @@ export const Admin = () => {
                 };
 
                 try {
-                  const res = await fetch(
-                    "http://localhost:3007/api/campaigns",
-                    {
+                  const res = await fetch(`${API_URL}/api/campaigns`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(payload),

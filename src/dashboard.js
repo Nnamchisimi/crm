@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
@@ -33,15 +33,19 @@ const Dashboard = () => {
   const [vehicles, setVehicles] = useState([]);
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
-  const userToken = localStorage.getItem("token");
-  const userEmail = localStorage.getItem("userEmail");
+  
+  // Changed from localStorage to sessionStorage
+  const userToken = sessionStorage.getItem("token");
+  const userEmail = sessionStorage.getItem("userEmail");
+  
   const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
-const handleSignOut = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("userEmail");
-  navigate("/signin", { replace: true });
-};
+  const handleSignOut = () => {
+    // Changed from localStorage to sessionStorage
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userEmail");
+    navigate("/signin", { replace: true });
+  };
 
   const getClosestDateCount = () => {
     if (!activeCampaigns.length) return 0;
@@ -61,22 +65,21 @@ const handleSignOut = () => {
 
   // Auth check
   useEffect(() => {
-  if (!userToken) {
-    navigate("/signin", { replace: true });
-    return;
-  }
+    if (!userToken) {
+      navigate("/signin", { replace: true });
+      return;
+    }
 
-  try {
-    const decoded = jwtDecode(userToken);
-    if (decoded.role !== "user") {
+    try {
+      const decoded = jwtDecode(userToken);
+      if (decoded.role !== "user") {
+        navigate("/signin", { replace: true });
+      }
+    } catch (err) {
+      console.error("Invalid token:", err);
       navigate("/signin", { replace: true });
     }
-  } catch (err) {
-    console.error("Invalid token:", err);
-    navigate("/signin", { replace: true });
-  }
-}, [navigate, userToken]);
-
+  }, [navigate, userToken]);
 
   // Fetch vehicles
   useEffect(() => {
@@ -219,7 +222,7 @@ const handleSignOut = () => {
             <Grid item xs={12} sm={6} md={4} key={index}>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.2 }}>
                 <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Typography variant="h6" sx={{  minWidth: 160, color: "#00bcd4" }}>{stat.title}</Typography>
+                  <Typography variant="h6" sx={{ minWidth: 160, color: "#00bcd4" }}>{stat.title}</Typography>
                   <Typography variant="h4" fontWeight="bold" mt={1}>{stat.value}</Typography>
                 </Paper>
               </motion.div>
@@ -227,7 +230,7 @@ const handleSignOut = () => {
           ))}
         </Grid>
 
-            {/* Vehicles */}
+        {/* Vehicles */}
         <Box mt={{ xs: 3, sm: 6 }}>
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             My Vehicles
@@ -251,22 +254,20 @@ const handleSignOut = () => {
             ) : (
               vehicles.map((vehicle) => (
                 <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
-                  <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%",  minWidth: 0,  }}>
-                   <Box sx={{ display: "flex", alignItems: "center", mb: 1, minWidth: 0 }}>
-                    <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
-
-                    <Box sx={{ ml: 1, minWidth: 0, flexGrow: 1 }}>
-                      <Typography
-                        variant="h6"
-                        fontWeight="bold"
-                        noWrap
-                        sx={{ minWidth: 0 }}
-                      >
-                        {vehicle.brand || "---"} {vehicle.model || "---"}
-                      </Typography>
+                  <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%", minWidth: 0 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1, minWidth: 0 }}>
+                      <BrandLogo brand={vehicle.brand} size="lg" showName={false} />
+                      <Box sx={{ ml: 1, minWidth: 0, flexGrow: 1 }}>
+                        <Typography
+                          variant="h6"
+                          fontWeight="bold"
+                          noWrap
+                          sx={{ minWidth: 0 }}
+                        >
+                          {vehicle.brand || "---"} {vehicle.model || "---"}
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Box>
-
                     <Divider sx={{ mb: 1, borderColor: "rgba(255,255,255,0.1)" }} />
                     <Typography sx={{ color: "rgba(255,255,255,0.7)" }}>
                       {vehicle.vehicle_type || "---"} • {vehicle.year || "---"} • {vehicle.license_plate || "---"}

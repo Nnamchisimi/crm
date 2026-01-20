@@ -87,7 +87,7 @@ const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, d
 
 
 useEffect(() => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   if (!token) {
     navigate("/signin", { replace: true });
     return;
@@ -98,6 +98,7 @@ useEffect(() => {
     navigate("/signin", { replace: true });
   }
 }, [navigate]);
+
  
     
     return (
@@ -160,8 +161,9 @@ const BookService = () => {
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState(null);
 
-    const userToken = localStorage.getItem("token");
-    const userEmail = localStorage.getItem("userEmail"); 
+const userToken = sessionStorage.getItem("token");
+const userEmail = sessionStorage.getItem("userEmail");
+
 
     const [formData, setFormData] = useState({
         vehicle: null,
@@ -174,19 +176,18 @@ const BookService = () => {
 
     const isDateSelected = !!formData.date; 
 
-    const handleAuthError = () => {
-        console.error("Authentication failed. Token invalid.");
-        localStorage.removeItem("token");
-        localStorage.removeItem("userEmail");
-        navigate("/signin");
-    };
-      const handleSignOut=()=>{
-        localStorage.removeItem("token")
-        localStorage.removeItem(userEmail)
-        sessionStorage.clear();
-        navigate("/signin",{replace:true})
-        
-    }
+ const handleAuthError = () => {
+  console.error("Authentication failed. Token invalid.");
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("userEmail");
+  navigate("/signin", { replace: true });
+};
+
+     const handleSignOut = () => {
+  sessionStorage.clear();
+  navigate("/signin", { replace: true });
+};
+
     
     const sidebarItems = [
        

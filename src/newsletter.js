@@ -36,16 +36,15 @@ const Newsletter = () => {
 
 
 
-  const loggedInEmail = localStorage.getItem("userEmail") || "";
-     const handleSignOut = () => {
+const loggedInEmail = sessionStorage.getItem("userEmail") || "";
+const userToken = sessionStorage.getItem("token");
 
-        localStorage.removeItem("token");
-        localStorage.removeItem("userEmail");
-        sessionStorage.clear();
-
-        navigate("/signin", { replace: true });
-      };
-
+const handleSignOut = () => {
+  // Clear all potential storage to prevent stale data loops
+  sessionStorage.clear();
+  localStorage.clear(); 
+  navigate("/signin", { replace: true });
+};
 
   const [formData, setFormData] = useState({
     phone: "",
@@ -77,57 +76,61 @@ const Newsletter = () => {
     });
   };
 useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
+
+  if (!userToken) {
     navigate("/signin", { replace: true });
     return;
   }
 
-  const { role } = jwtDecode(token);
-  if (role !== "user") {
-    navigate("/signin", { replace: true });
+  try {
+    const { role } = jwtDecode(userToken);
+    if (role !== "user") {
+      navigate("/signin", { replace: true });
+    }
+  } catch (err) {
+    console.error("Invalid token:", err);
+    handleSignOut();
   }
-}, [navigate]);
+}, [navigate, userToken]);
 
 
 
   
-  const handleSubmit = async () => {
-    if (!loggedInEmail) {
-      alert("You must be logged in to subscribe.");
-      return;
-    }
+const handleSubmit = async () => {
+  if (!loggedInEmail) {
+    alert("You must be logged in to subscribe.");
+    return;
+  }
 
-    const payload = {
-      ...formData,
-      email: loggedInEmail,
-    };
-
-    try {
-       const response = await fetch(`${API_BASE_URL}/api/newsletter`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Thank you for subscribing!");
-      } else {
-        alert("Error: " + (data.message || "Unknown error"));
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Server error, please try again.");
-    }
-
-    setFormData({
-      phone: "",
-      notifications: { email: true, sms: false, phone: false },
-      preferences: { weeklyDigest: true, monthlyOffers: false, reminders: false },
-    });
+  const payload = {
+    ...formData,
+    email: loggedInEmail,
   };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/newsletter`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${userToken}` // Added token here
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("Thank you for subscribing!");
+    } else {
+      alert("Error: " + (data.message || "Unknown error"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Server error, please try again.");
+  }
+  
+
+};
 
   const sidebarItems = [
 

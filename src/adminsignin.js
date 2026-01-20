@@ -14,31 +14,40 @@ import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "./Header";
 import { GoogleLogin } from "@react-oauth/google";
-import {jwtDecode} from "jwt-decode";
+
+/* ✅ API URL */
+const API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:3007";
 
 export const AdminSignIn = () => {
   const navigate = useNavigate();
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       if (!credentialResponse || !credentialResponse.credential) return;
 
-      const decoded = jwtDecode(credentialResponse.credential);
-
-      const res = await fetch("http://localhost:3007/api/auth/google", {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
+        body: JSON.stringify({
+          id_token: credentialResponse.credential,
+          isAdminSignin: true, // ✅ ADMIN FLAG
+        }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem("userEmail", data.email);
-        localStorage.setItem("userRole", data.role);
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userEmail", data.user.email);
+        localStorage.setItem("userRole", data.user.role);
 
-        if (data.role === "admin") {
+        if (data.user.role === "admin") {
           navigate("/admin");
         } else {
           setSnackbar({
@@ -118,7 +127,12 @@ export const AdminSignIn = () => {
 
               <Box
                 component="form"
-                sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3 }}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  mt: 3,
+                }}
                 onSubmit={(e) => e.preventDefault()}
               >
                 <TextField
@@ -154,16 +168,19 @@ export const AdminSignIn = () => {
                 </Button>
               </Box>
 
-              <Divider sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}>or</Divider>
+              <Divider
+                sx={{ my: 3, backgroundColor: "rgba(255,255,255,0.2)" }}
+              >
+                or
+              </Divider>
 
-                 {/*    <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-              />
-            </Box>
-             */}
+              <Box sx={{ display: "flex", justifyContent: "center" }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                />
+              </Box>
 
               <Typography
                 variant="body2"
@@ -191,7 +208,6 @@ export const AdminSignIn = () => {
         </Container>
       </Box>
 
-      {/* Snackbar for messages */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
