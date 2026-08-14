@@ -7,7 +7,7 @@
     "test-db": "node test-db-connection.js",
     "test-insert": "node test-insert-user.js",
     "test-all": "yarn run test-db && yarn run test-insert",
-      "build": "echo 'No build needed for backend'",
+    "build": "echo 'No build needed for backend'",
     "dev": "nodemon index.js"
   },
   "dependencies": {
@@ -18,7 +18,7 @@
     "express": "^4.22.1",
     "google-auth-library": "^10.4.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.13.0",
-    "nodemailer": "^7.0.12"
+    "nodemailer": "^7.0.12",
+    "pg": "^8.23.0"
   }
 }
