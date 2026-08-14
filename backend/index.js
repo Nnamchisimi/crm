@@ -45,7 +45,15 @@ if (process.env.DATABASE_URL) {
         database: params.pathname.replace(/^\//, ""),
         waitForConnections: true,
         connectionLimit: 10,
-        queueLimit: 0
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+        connectTimeout: 10000,
+        acquireTimeout: 10000
+    });
+
+    pool.on("error", (err) => {
+        console.error("MySQL Pool Error:", err);
     });
 
     console.log("✅ Connected to Production DB:", params.hostname);
@@ -59,11 +67,30 @@ if (process.env.DATABASE_URL) {
         port: process.env.DB_PORT || 3306,
         waitForConnections: true,
         connectionLimit: 10,
-        queueLimit: 0
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+        connectTimeout: 10000,
+        acquireTimeout: 10000
+    });
+
+    pool.on("error", (err) => {
+        console.error("MySQL Pool Error:", err);
     });
 
     console.log("✅ Connected to Local MySQL DB");
 }
+
+const queryWithRetry = async (sql, params) => {
+    try {
+        return await pool.query(sql, params);
+    } catch (err) {
+        if (err.code === "PROTOCOL_CONNECTION_LOST") {
+            return await pool.query(sql, params);
+        }
+        throw err;
+    }
+};
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -104,7 +131,7 @@ app.get("/api/health", (req, res) => {
 
 app.get("/api/servicetype", verifyToken, async (req, res) => {
     try {
-        const [rows] = await pool.query(
+        const [rows] = await queryWithRetry(
             "SELECT id, label, cost, Icon_name FROM servicetype ORDER BY label"
         );
         res.json(rows);
@@ -116,7 +143,7 @@ app.get("/api/servicetype", verifyToken, async (req, res) => {
 
 app.get("/api/branch", verifyToken,async(req,res)=>{
     try{
-        const [rows] = await pool.query(
+        const [rows] = await queryWithRetry(
             "SELECT id, name FROM branch ORDER  BY id"
             
         );
@@ -145,7 +172,7 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
             return res.json([]);
         }
 
-        const [bookedCounts] = await pool.query(
+        const [bookedCounts] = await queryWithRetry(
             `SELECT 
                 TIME_FORMAT(appointment_date, '%H:%i') AS slot_time, 
                 COUNT(*) AS booked_count
@@ -157,7 +184,7 @@ app.get("/api/timeslots", verifyToken, async (req, res) => {
         
         const bookedMap = new Map(bookedCounts.map(row => [row.slot_time, row.booked_count]));
 
-        const [allSlotsRows] = await pool.query(
+        const [allSlotsRows] = await queryWithRetry(
             "SELECT TIME_FORMAT(start_time, '%H:%i') AS slot_time, quota FROM time_slots ORDER BY start_time"
         );
 
@@ -190,7 +217,7 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
     const userEmail = req.user.email;
 
     try {
-        const [rows] = await pool.query(
+        const [rows] = await queryWithRetry(
             "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.email = ? ORDER BY v.id DESC", 
             [userEmail]
         );
@@ -211,7 +238,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query(
+        const [rows] = await queryWithRetry(
             "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ? AND v.email = ?",
             [id, userEmail]
         );
@@ -222,7 +249,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             return res.status(404).json({ message: "Vehicle not found or access denied" });
         }
 
-        const [campaignsRows] = await pool.query(`
+        const [campaignsRows] = await queryWithRetry(`
             SELECT 
                 sc.id,
                 sc.campaign_title,
@@ -322,7 +349,7 @@ app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
             return res.status(404).json({ message: "Vehicle not found or update unauthorized." });
         }
 
-        const [updatedRows] = await pool.query(
+        const [updatedRows] = await queryWithRetry(
             "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = ?",
             [id]
         );
@@ -362,7 +389,7 @@ app.post("/api/vehicles", verifyToken, async (req, res) => {
     }
 
     try {
-        const [existing] = await pool.query(
+        const [existing] = await queryWithRetry(
             "SELECT * FROM vehicles WHERE vin = ? OR license_plate = ?",
             [vin, licensePlate]
         );
@@ -435,14 +462,14 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
     const bookingDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
     try {
-        const [slotQuota] = await pool.query(
+        const [slotQuota] = await queryWithRetry(
             "SELECT quota FROM time_slots WHERE TIME_FORMAT(start_time, '%H:%i') = ?",
             [appointmentTime]
         );
 
         const quota = slotQuota[0]?.quota || 20;
 
-        const [bookedCountResult] = await pool.query(
+        const [bookedCountResult] = await queryWithRetry(
             `SELECT COUNT(*) AS booked_count 
              FROM bookings 
              WHERE DATE(appointment_date) = ? 
@@ -456,7 +483,7 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
             });
         }
 
-        const [vehicleCheck] = await pool.query(
+        const [vehicleCheck] = await queryWithRetry(
             "SELECT id FROM vehicles WHERE id = ? AND email = ?",
             [vehicleId, customerEmail]
         );
@@ -505,7 +532,7 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
 app.get("/api/bookings", verifyToken, async (req, res) => {
     const customerEmail = req.user.email;
     try {
-        const [rows] = await pool.query(
+        const [rows] = await queryWithRetry(
             `SELECT 
                 b.booking_id, 
                 b.appointment_date, 
@@ -571,7 +598,7 @@ app.post("/api/auth/google", async (req, res) => {
         const surname = payload.family_name || "";
 
         // 2️⃣ Check if user exists by email
-        const [existingUsers] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+        const [existingUsers] = await queryWithRetry("SELECT * FROM users WHERE email = ?", [email]);
 
         let user;
 
@@ -583,7 +610,7 @@ app.post("/api/auth/google", async (req, res) => {
             let username = baseUsername;
             let counter = 1;
             while (true) {
-                const [rows] = await pool.query("SELECT id FROM users WHERE username = ?", [username]);
+                const [rows] = await queryWithRetry("SELECT id FROM users WHERE username = ?", [username]);
                 if (rows.length === 0) break;
                 username = `${baseUsername}${counter++}`;
             }
@@ -595,7 +622,7 @@ app.post("/api/auth/google", async (req, res) => {
                 while (!isUnique) {
                     const randomNum = Math.floor(Math.random() * 99999) + 1; // 1-99999
                     crmNumber = `CRM-${String(randomNum).padStart(5, "0")}`;
-                    const [rows] = await pool.query("SELECT id FROM users WHERE crm_number = ?", [crmNumber]);
+                    const [rows] = await queryWithRetry("SELECT id FROM users WHERE crm_number = ?", [crmNumber]);
                     if (rows.length === 0) isUnique = true;
                 }
                 return crmNumber;
@@ -610,7 +637,7 @@ app.post("/api/auth/google", async (req, res) => {
                 [name, surname, username, email, google_id, crmNumber]
             );
 
-            const [createdUser] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
+            const [createdUser] = await queryWithRetry("SELECT * FROM users WHERE id = ?", [result.insertId]);
             user = createdUser[0];
             console.log("🆕 Google user created with CRM:", crmNumber, email);
 
@@ -671,7 +698,7 @@ app.post("/api/auth/signup", async (req, res) => {
         }
 
         // 2️⃣ Check if email or username already exists
-        const [existing] = await pool.query(
+        const [existing] = await queryWithRetry(
             "SELECT id FROM users WHERE email = ? OR username = ?",
             [email, username]
         );
@@ -691,7 +718,7 @@ app.post("/api/auth/signup", async (req, res) => {
                 const randomNum = Math.floor(Math.random() * 99999) + 1; // 1-99999
                 crmNumber = `CRM-${String(randomNum).padStart(5, "0")}`; // e.g., CRM-04237
 
-                const [rows] = await pool.query(
+                const [rows] = await queryWithRetry(
                     "SELECT id FROM users WHERE crm_number = ?",
                     [crmNumber]
                 );
@@ -774,7 +801,7 @@ app.post("/api/auth/verify-email", async (req, res) => {
   }
 
   console.log("Token received for verification:", token);
-  const [users] = await pool.query(
+  const [users] = await queryWithRetry(
     `SELECT id, is_verified, email_verification_expires
      FROM users
      WHERE email_verification_token = ?`,
@@ -820,7 +847,7 @@ app.post("/api/auth/signin", async (req, res) => {
       return res.status(400).json({ message: "Email and password required" });
     }
 
-    const [users] = await pool.query(
+    const [users] = await queryWithRetry(
       "SELECT * FROM users WHERE email = ?",
       [email]
     );
@@ -917,14 +944,14 @@ app.post("/api/newsletter/send", async (req, res) => {
     const { subject, content } = req.body;
 
     try {
-        const [subscribers] = await pool.query("SELECT email FROM newsletter_subscriptions");
+        const [subscribers] = await queryWithRetry("SELECT email FROM newsletter_subscriptions");
 
         subscribers.forEach(user => {
             console.log(`Sending newsletter to ${user.email}`);
         });
 
         for (const user of subscribers) {
-            await pool.query(
+            await queryWithRetry(
                 "INSERT INTO notifications (user_email, type, title, message) VALUES (?, 'Newsletter', ?, ?)",
                 [user.email, subject, content]
             );
@@ -945,7 +972,7 @@ app.get("/api/campaigns", async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await queryWithRetry(`
             SELECT 
                 sc.id,
                 sc.campaign_title,
