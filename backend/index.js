@@ -82,13 +82,25 @@ if (process.env.DATABASE_URL) {
 }
 
 const queryWithRetry = async (sql, params) => {
+    let connection;
     try {
-        return await pool.query(sql, params);
+        connection = await pool.getConnection();
+        await connection.query("SELECT 1");
+        const result = await connection.query(sql, params);
+        return result;
     } catch (err) {
+        if (connection) connection.release();
         if (err.code === "PROTOCOL_CONNECTION_LOST") {
-            return await pool.query(sql, params);
+            connection = await pool.getConnection();
+            await connection.query("SELECT 1");
+            const result = await connection.query(sql, params);
+            connection.release();
+            return result;
         }
+        if (connection) connection.release();
         throw err;
+    } finally {
+        if (connection) connection.release();
     }
 };
 
