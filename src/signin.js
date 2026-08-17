@@ -57,19 +57,18 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        // CHANGED: Using sessionStorage instead of localStorage
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
-        sessionStorage.setItem("role", role);
-        sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("userName", data.name || data.user?.name || "");
-        sessionStorage.setItem(
+        localStorage.setItem("role", role);
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userName", data.name || data.user?.name || "");
+        localStorage.setItem(
           "userSurname",
           data.surname || data.user?.surname || ""
         );
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userPhone",
           data.phone || data.user?.phone || ""
         );
@@ -110,13 +109,12 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        // CHANGED: Using sessionStorage instead of localStorage
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
-        sessionStorage.setItem("role", role);
-        sessionStorage.setItem("token", data.token);
+        localStorage.setItem("role", role);
+        localStorage.setItem("token", data.token);
 
         if (role === "admin") navigate("/admin");
         else if (role === "user") navigate("/dashboard");
