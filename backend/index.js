@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 const { OAuth2Client } = require("google-auth-library");
+const dns = require("dns");
 const { URL } = require("url");
 
 const transporter = nodemailer.createTransport({
@@ -37,7 +38,9 @@ const pool = new Pool({
     password: decodeURIComponent(parsed.password),
     database: parsed.pathname.replace(/^\//, ""),
     ssl: { rejectUnauthorized: false },
-    family: 4
+    lookup: (hostname, options, callback) => {
+        dns.lookup(hostname, { family: 4 }, callback);
+    }
 });
 
 pool.on("connect", () => {
