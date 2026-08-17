@@ -18,7 +18,7 @@
     "express": "^4.22.1",
     "google-auth-library": "^10.4.0",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^7.0.12",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "resend": "^4.5.1"
   }
 }
