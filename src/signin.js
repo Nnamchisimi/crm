@@ -57,12 +57,13 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        localStorage.setItem(
+        sessionStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
         localStorage.setItem("role", role);
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", role);
+        sessionStorage.setItem("token", data.token);
         localStorage.setItem("userName", data.name || data.user?.name || "");
         localStorage.setItem(
           "userSurname",
@@ -109,16 +110,16 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        localStorage.setItem(
+        sessionStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
         localStorage.setItem("role", role);
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", role);
+        sessionStorage.setItem("token", data.token);
 
         if (role === "admin") navigate("/admin");
-        else if (role === "user") navigate("/dashboard");
-        else navigate("/signin");
+        else navigate("/dashboard");
       } else {
         console.error("Google login failed:", data.message);
       }
@@ -230,7 +231,6 @@ export const SignIn = () => {
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
-                useOneTap
               />
             </Box>
 
