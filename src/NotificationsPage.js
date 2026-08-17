@@ -63,7 +63,6 @@ const NotificationsPage = () => {
       console.error("Auth error:", err);
       handleSignOut();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, userToken]);
 
   const fetchNotifications = async () => {
