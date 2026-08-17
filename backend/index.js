@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 const { OAuth2Client } = require("google-auth-library");
+const { URL } = require("url");
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -26,8 +27,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const databaseUrl = process.env.DATABASE_URL;
+const parsed = new URL(databaseUrl);
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 5432,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: parsed.pathname.replace(/^\//, ""),
     ssl: { rejectUnauthorized: false },
     family: 4
 });
