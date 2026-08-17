@@ -1,9 +1,37 @@
 services:
   - type: web
+    name: crm-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node index.js
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres.dowhqyrwbmpbeginmgej:Crm26.er.32@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+      - key: NODE_ENV
+        value: production
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: web
     name: crm-front
     env: static
     staticPublishPath: build
+    buildCommand: npm install && npm run build
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+    envVars:
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        value: 1077024630815-irm5k01nll1ng6begm467k29fvdfhr5h.apps.googleusercontent.com
+      - key: REACT_APP_API_URL
+        value: https://crm-bnnc.onrender.com

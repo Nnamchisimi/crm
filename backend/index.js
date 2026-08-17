@@ -3,40 +3,19 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 const { OAuth2Client } = require("google-auth-library");
-const dns = require("dns");
-const { URL } = require("url");
-
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
-
-transporter.verify((err, success) => {
-    if (err) console.error("❌ Email transporter error:", err);
-    else console.log("✅ Email transporter ready");
-});
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const databaseUrl = process.env.DATABASE_URL;
-const parsed = new URL(databaseUrl);
 
 const pool = new Pool({
-    host: parsed.hostname,
-    port: parseInt(parsed.port) || 5432,
-    user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\//, ""),
+    connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
     lookup: (hostname, options, callback) => {
         dns.lookup(hostname, { family: 4 }, callback);
@@ -674,8 +653,8 @@ app.post("/api/auth/signup", async (req, res) => {
         const verifyUrl = `${process.env.FRONTEND_URL}/#/verify-email?token=${token}`;
 
         try {
-            await transporter.sendMail({
-                from: `"CRM App" <${process.env.EMAIL_USER}>`,
+            await resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL || process.env.EMAIL_USER,
                 to: email,
                 subject: "Verify your email",
                 html: `
