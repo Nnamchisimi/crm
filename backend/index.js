@@ -84,6 +84,65 @@ app.get("/api/servicetype", verifyToken, async (req, res) => {
     }
 });
 
+app.post("/api/servicetype", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { label, cost, Icon_name } = req.body;
+        if (!label) return res.status(400).json({ error: "Service label is required" });
+
+        const result = await pool.query(
+            "INSERT INTO servicetype (label, cost, Icon_name) VALUES ($1, $2, $3) RETURNING id, label, cost, Icon_name",
+            [label, cost || 0, Icon_name || null]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error("Error creating service type:", err);
+        res.status(500).json({ error: "Failed to create service type" });
+    }
+});
+
+app.put("/api/servicetype/:id", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { id } = req.params;
+        const { label, cost, Icon_name } = req.body;
+        if (!label) return res.status(400).json({ error: "Service label is required" });
+
+        const result = await pool.query(
+            "UPDATE servicetype SET label = $1, cost = $2, Icon_name = $3 WHERE id = $4 RETURNING id, label, cost, Icon_name",
+            [label, cost || 0, Icon_name || null, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Service type not found" });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Error updating service type:", err);
+        res.status(500).json({ error: "Failed to update service type" });
+    }
+});
+
+app.delete("/api/servicetype/:id", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { id } = req.params;
+        const result = await pool.query("DELETE FROM servicetype WHERE id = $1 RETURNING id", [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Service type not found" });
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Error deleting service type:", err);
+        res.status(500).json({ error: "Failed to delete service type" });
+    }
+});
+
 app.get("/api/branch", verifyToken, async (req, res) => {
     try {
         const rows = await queryWithRetry(
@@ -93,6 +152,65 @@ app.get("/api/branch", verifyToken, async (req, res) => {
     } catch (err) {
         console.error("Error fetching branches:", err);
         res.status(500).json({ error: "Failed to fetch branches" });
+    }
+});
+
+app.post("/api/branch", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: "Branch name is required" });
+
+        const result = await pool.query(
+            "INSERT INTO branch (name) VALUES ($1) RETURNING id, name",
+            [name]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error("Error creating branch:", err);
+        res.status(500).json({ error: "Failed to create branch" });
+    }
+});
+
+app.put("/api/branch/:id", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: "Branch name is required" });
+
+        const result = await pool.query(
+            "UPDATE branch SET name = $1 WHERE id = $2 RETURNING id, name",
+            [name, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Branch not found" });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Error updating branch:", err);
+        res.status(500).json({ error: "Failed to update branch" });
+    }
+});
+
+app.delete("/api/branch/:id", verifyToken, async (req, res) => {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+        const { id } = req.params;
+        const result = await pool.query("DELETE FROM branch WHERE id = $1 RETURNING id", [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Branch not found" });
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Error deleting branch:", err);
+        res.status(500).json({ error: "Failed to delete branch" });
     }
 });
 
