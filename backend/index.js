@@ -694,7 +694,7 @@ app.post("/api/auth/google", async (req, res) => {
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             process.env.JWT_SECRET || "supersecretkey",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.json({
@@ -884,7 +884,7 @@ app.post("/api/auth/signin", async (req, res) => {
                 surname: user.surname
             },
             process.env.JWT_SECRET || "supersecretkey",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.json({
