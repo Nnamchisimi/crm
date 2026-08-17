@@ -271,7 +271,7 @@ app.get("/api/vehicles", verifyToken, async (req, res) => {
 
     try {
         const rows = await queryWithRetry(
-            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.email = $1 ORDER BY v.id DESC",
+            "SELECT v.*, u.crm_number FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE LOWER(v.email) = LOWER($1) ORDER BY v.id DESC",
             [userEmail]
         );
         res.json(rows);
@@ -291,7 +291,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
 
     try {
         const rows = await queryWithRetry(
-            "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = $1 AND v.email = $2",
+            "SELECT v.*, u.crm_number, u.name as customerName FROM vehicles v LEFT JOIN users u ON v.email = u.email WHERE v.id = $1 AND LOWER(v.email) = LOWER($2)",
             [id, userEmail]
         );
 
@@ -313,7 +313,7 @@ app.get("/api/vehicles/:id", verifyToken, async (req, res) => {
             FROM service_campaigns sc
             LEFT JOIN user_campaigns uc
                 ON sc.id = uc.campaign_id
-                AND uc.user_email = $1
+                AND LOWER(uc.user_email) = LOWER($1)
                 AND uc.status = 'active'
             WHERE 
                 (sc.brand_filter IS NULL OR sc.brand_filter = $2)
@@ -377,7 +377,7 @@ app.put("/api/vehicles/:id", verifyToken, async (req, res) => {
                 fuel_type = $9, 
                 year = $10, 
                 kilometers = $11
-            WHERE id = $12 AND email = $13`,
+             WHERE id = $12 AND LOWER(email) = LOWER($13)`,
             [
                 name,
                 surname,
@@ -531,7 +531,7 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
         }
 
         const vehicleCheck = await queryWithRetry(
-            "SELECT id FROM vehicles WHERE id = $1 AND email = $2",
+                "SELECT id FROM vehicles WHERE id = $1 AND LOWER(email) = LOWER($2)",
             [vehicleId, customerEmail]
         );
 
@@ -588,7 +588,7 @@ app.get("/api/bookings", verifyToken, async (req, res) => {
             JOIN vehicles v ON b.vehicle_id = v.id
             JOIN servicetype s ON b.servicetype_id = s.id
             JOIN branch br ON b.branch_id = br.id
-            WHERE b.customer_email = $1
+            WHERE LOWER(b.customer_email) = LOWER($1)
             ORDER BY b.appointment_date DESC`,
             [customerEmail]
         );
@@ -605,7 +605,7 @@ app.post("/api/bookings/:id/cancel", verifyToken, async (req, res) => {
 
     try {
         const result = await pool.query(
-            "UPDATE bookings SET status = 'Cancelled' WHERE booking_id = $1 AND customer_email = $2 AND status = 'Scheduled'",
+            "UPDATE bookings SET status = 'Cancelled' WHERE booking_id = $1 AND LOWER(customer_email) = LOWER($2) AND status = 'Scheduled'",
             [bookingId, customerEmail]
         );
 
@@ -636,7 +636,7 @@ app.post("/api/auth/google", async (req, res) => {
         const name = payload.given_name || "";
         const surname = payload.family_name || "";
 
-        const existingUsers = await queryWithRetry("SELECT * FROM users WHERE email = $1", [email]);
+        const existingUsers = await queryWithRetry("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
 
         let user;
 
@@ -728,7 +728,7 @@ app.post("/api/auth/signup", async (req, res) => {
         }
 
         const existing = await queryWithRetry(
-            "SELECT id FROM users WHERE email = $1 OR username = $2",
+            "SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR username = $2",
             [email, username]
         );
         if (existing.length > 0) {
@@ -786,7 +786,7 @@ app.post("/api/auth/signup", async (req, res) => {
         } catch (err) {
             console.error("⚠️ Failed to send verification email:", err);
             await pool.query(
-                `UPDATE users SET is_verified = TRUE WHERE email = $1`,
+                `UPDATE users SET is_verified = TRUE WHERE LOWER(email) = LOWER($1)`,
                 [email]
             );
             console.log("⚠️ User marked as verified due to email failure:", email);
@@ -853,7 +853,7 @@ app.post("/api/auth/signin", async (req, res) => {
         }
 
         const users = await queryWithRetry(
-            "SELECT * FROM users WHERE email = $1",
+            "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
             [email]
         );
 
@@ -990,7 +990,7 @@ app.get("/api/campaigns", async (req, res) => {
             FROM service_campaigns sc
             LEFT JOIN user_campaigns uc
                 ON sc.id = uc.campaign_id
-                AND uc.user_email = $1
+                AND LOWER(uc.user_email) = LOWER($1)
                 AND uc.status = 'active'
             ORDER BY sc.created_at DESC`,
             [email]
@@ -1025,7 +1025,7 @@ app.post("/api/campaigns/:id/book", async (req, res) => {
 
     try {
         const existing = await queryWithRetry(
-            "SELECT * FROM user_campaigns WHERE campaign_id = $1 AND user_email = $2 AND status = 'active'",
+            "SELECT * FROM user_campaigns WHERE campaign_id = $1 AND LOWER(user_email) = LOWER($2) AND status = 'active'",
             [id, email.trim().toLowerCase()]
         );
 
@@ -1055,7 +1055,7 @@ app.post("/api/campaigns/:id/cancel", async (req, res) => {
 
     try {
         const result = await pool.query(
-            "UPDATE user_campaigns SET status = 'cancelled' WHERE campaign_id = $1 AND user_email = $2 AND status = 'active'",
+            "UPDATE user_campaigns SET status = 'cancelled' WHERE campaign_id = $1 AND LOWER(user_email) = LOWER($2) AND status = 'active'",
             [id, email]
         );
 
