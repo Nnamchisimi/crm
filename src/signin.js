@@ -57,13 +57,13 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
         localStorage.setItem("role", role);
         localStorage.setItem("userRole", role);
-        sessionStorage.setItem("token", data.token);
+        localStorage.setItem("token", data.token);
         localStorage.setItem("userName", data.name || data.user?.name || "");
         localStorage.setItem(
           "userSurname",
@@ -73,6 +73,8 @@ export const SignIn = () => {
           "userPhone",
           data.phone || data.user?.phone || ""
         );
+
+        console.log("[SignIn] stored token/role:", { role, email: data.email || data.user?.email });
 
         if (role === "admin") navigate("/admin");
         else if (role === "user") navigate("/dashboard");
@@ -110,13 +112,15 @@ export const SignIn = () => {
       if (data.success) {
         const role = resolveRole(data);
 
-        sessionStorage.setItem(
+        localStorage.setItem(
           "userEmail",
           data.email || data.user?.email || jwtDecode(data.token)?.email
         );
         localStorage.setItem("role", role);
         localStorage.setItem("userRole", role);
-        sessionStorage.setItem("token", data.token);
+        localStorage.setItem("token", data.token);
+
+        console.log("[GoogleSignIn] stored token/role:", { role, email: data.email || data.user?.email });
 
         if (role === "admin") navigate("/admin");
         else navigate("/dashboard");

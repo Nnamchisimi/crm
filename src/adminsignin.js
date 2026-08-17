@@ -47,6 +47,8 @@ export const AdminSignIn = () => {
         localStorage.setItem("userEmail", data.user.email);
         localStorage.setItem("userRole", data.user.role);
 
+        console.log("[AdminSignIn] Google admin login:", { email: data.user.email, role: data.user.role });
+
         if (data.user.role === "admin") {
           navigate("/admin");
         } else {
@@ -57,9 +59,10 @@ export const AdminSignIn = () => {
           });
         }
       } else {
+        console.warn("[AdminSignIn] Google login response missing success:", data);
         setSnackbar({
           open: true,
-          message: data.error || "Google login failed",
+          message: data.error || data.message || "Google login failed",
           severity: "error",
         });
       }

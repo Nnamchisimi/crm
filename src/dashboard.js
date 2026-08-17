@@ -34,16 +34,14 @@ const Dashboard = () => {
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
   
-  // Changed from localStorage to sessionStorage
-  const userToken = sessionStorage.getItem("token");
-  const userEmail = sessionStorage.getItem("userEmail");
+  const userToken = localStorage.getItem("token");
+  const userEmail = localStorage.getItem("userEmail");
   
   const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
   const handleSignOut = () => {
-    // Changed from localStorage to sessionStorage
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("userEmail");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
     navigate("/signin", { replace: true });
   };
 
@@ -65,18 +63,23 @@ const Dashboard = () => {
 
   // Auth check
   useEffect(() => {
+    console.log("[Dashboard] auth check:", { hasToken: !!userToken, email: userEmail });
+
     if (!userToken) {
+      console.warn("[Dashboard] no token found, redirecting to /signin");
       navigate("/signin", { replace: true });
       return;
     }
 
     try {
       const decoded = jwtDecode(userToken);
+      console.log("[Dashboard] decoded token role:", decoded.role);
       if (decoded.role !== "user") {
+        console.warn("[Dashboard] role is not 'user':", decoded.role, "redirecting to /signin");
         navigate("/signin", { replace: true });
       }
     } catch (err) {
-      console.error("Invalid token:", err);
+      console.error("[Dashboard] Invalid token:", err);
       navigate("/signin", { replace: true });
     }
   }, [navigate, userToken]);
