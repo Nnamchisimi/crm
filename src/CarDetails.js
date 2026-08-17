@@ -21,9 +21,12 @@ const CarDetails = () => {
     setError(null);
     const token = localStorage.getItem("token");
 
+    console.log("[CarDetails] localStorage token check:", { hasToken: !!token, tokenPrefix: token ? token.substring(0, 20) + "..." : null });
+    console.log("[CarDetails] localStorage keys:", Object.keys(localStorage));
+
     if (!token) {
-      console.error("Authentication token is missing. Redirecting.");
-      setError("Access denied. Please log in.");
+      console.error("[CarDetails] Authentication token is missing. Redirecting to /signin.");
+      navigate("/signin", { replace: true });
       return;
     }
 
@@ -37,10 +40,13 @@ const CarDetails = () => {
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to load vehicle. Server returned status: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[CarDetails] API error:", res.status, errorData);
+        throw new Error(errorData.message || `Failed to load vehicle. Server returned status: ${res.status}`);
       }
 
       const data = await res.json();
+      console.log("[CarDetails] vehicle data received:", data);
 
       const normalizedData = {
         ...data,
@@ -50,7 +56,7 @@ const CarDetails = () => {
 
       setVehicle(normalizedData);
     } catch (err) {
-      console.error("Fetch or Auth Error:", err);
+      console.error("[CarDetails] Fetch or Auth Error:", err);
       setError(err.message);
       setVehicle(null);
     }
