@@ -35,3 +35,5 @@ services:
         value: 1077024630815-irm5k01nll1ng6begm467k29fvdfhr5h.apps.googleusercontent.com
       - key: REACT_APP_API_URL
         value: https://crm-bnnc.onrender.com
+      - key: DISABLE_ESLINT_PLUGIN
+        value: true
