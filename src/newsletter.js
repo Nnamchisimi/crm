@@ -36,13 +36,14 @@ const Newsletter = () => {
 
 
 
-const loggedInEmail = sessionStorage.getItem("userEmail") || "";
-const userToken = sessionStorage.getItem("token");
+const loggedInEmail = localStorage.getItem("userEmail") || "";
+const userToken = localStorage.getItem("token");
 
 const handleSignOut = () => {
-  // Clear all potential storage to prevent stale data loops
-  sessionStorage.clear();
-  localStorage.clear(); 
+  localStorage.removeItem("token");
+  localStorage.removeItem("userEmail");
+  localStorage.removeItem("userName");
+  localStorage.clear();
   navigate("/signin", { replace: true });
 };
 

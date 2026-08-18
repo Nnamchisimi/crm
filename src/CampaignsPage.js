@@ -33,18 +33,14 @@ const CampaignsPage = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  // CHANGED: Switched from localStorage to sessionStorage
-  const userEmail = sessionStorage.getItem("userEmail");
-  const userToken = sessionStorage.getItem("token");
+  const userEmail = localStorage.getItem("userEmail");
+  const userToken = localStorage.getItem("token");
 
   const handleSignOut = () => {
-    // CHANGED: Clearing sessionStorage
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("userEmail");
-    sessionStorage.removeItem("userName");
-    sessionStorage.clear();
-    // Also clearing localStorage just in case old data exists
-    localStorage.clear(); 
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.clear();
     navigate("/signin", { replace: true });
   };
 

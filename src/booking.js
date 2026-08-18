@@ -87,7 +87,7 @@ const CalendarMock = ({ selectedDate, onDateSelect, mobileOpen, setMobileOpen, d
 
 
 useEffect(() => {
-  const token = sessionStorage.getItem("token");
+  const token = localStorage.getItem("token");
   if (!token) {
     navigate("/signin", { replace: true });
     return;
@@ -161,8 +161,8 @@ const BookService = () => {
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState(null);
 
-const userToken = sessionStorage.getItem("token");
-const userEmail = sessionStorage.getItem("userEmail");
+ const userToken = localStorage.getItem("token");
+ const userEmail = localStorage.getItem("userEmail");
 
 
     const [formData, setFormData] = useState({
@@ -178,13 +178,15 @@ const userEmail = sessionStorage.getItem("userEmail");
 
  const handleAuthError = () => {
   console.error("Authentication failed. Token invalid.");
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("userEmail");
+  localStorage.removeItem("token");
+  localStorage.removeItem("userEmail");
   navigate("/signin", { replace: true });
 };
 
      const handleSignOut = () => {
-  sessionStorage.clear();
+  localStorage.removeItem("token");
+  localStorage.removeItem("userEmail");
+  localStorage.clear();
   navigate("/signin", { replace: true });
 };
 

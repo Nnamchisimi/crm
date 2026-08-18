@@ -36,12 +36,14 @@ const NotificationsPage = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Strictly using sessionStorage
-  const userEmail = sessionStorage.getItem("userEmail");
-  const userToken = sessionStorage.getItem("token");
+  const userEmail = localStorage.getItem("userEmail");
+  const userToken = localStorage.getItem("token");
 
   const handleSignOut = () => {
-    sessionStorage.clear(); // Clears session data
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.clear();
     navigate("/signin", { replace: true });
   };
 
