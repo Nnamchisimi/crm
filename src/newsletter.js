@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -18,39 +18,39 @@ import {
   IconButton,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { useNavigate } from "react-router-dom";
 import useAuth from "./useAuth";
 import { motion } from "framer-motion";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
+
 const Newsletter = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-
-
-const loggedInEmail = localStorage.getItem("userEmail") || "";
-const userToken = localStorage.getItem("token");
-
-const handleSignOut = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userName");
-  localStorage.clear();
-  navigate("/signin", { replace: true });
-};
-
   const [formData, setFormData] = useState({
     phone: "",
     notifications: { email: true, sms: true, phone: true },
     preferences: { weeklyDigest: true, monthlyOffers: true, reminders: true },
   });
+
+  useAuth();
+
+  const loggedInEmail = localStorage.getItem("userEmail") || "";
+  const userToken = localStorage.getItem("token");
+
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.clear();
+    navigate("/signin", { replace: true });
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -75,52 +75,48 @@ const handleSignOut = () => {
       },
     });
   };
-  useAuth();
 
   const handleSubmit = async () => {
-  if (!loggedInEmail) {
-    alert("You must be logged in to subscribe.");
-    return;
-  }
+    if (!loggedInEmail) {
+      alert("You must be logged in to subscribe.");
+      return;
+    }
 
-  const payload = {
-    ...formData,
-    email: loggedInEmail,
+    const payload = {
+      ...formData,
+      email: loggedInEmail,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/newsletter`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Thank you for subscribing!");
+      } else {
+        alert("Error: " + (data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error, please try again.");
+    }
   };
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/newsletter`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${userToken}` // Added token here
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert("Thank you for subscribing!");
-    } else {
-      alert("Error: " + (data.message || "Unknown error"));
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Server error, please try again.");
-  }
-  
-
-};
-
   const sidebarItems = [
-
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Campaigns", icon: <CampaignIcon />, path: "/campaigns" },
     { text: "Newsletter", icon: <EmailIcon />, path: "/newsletter" },
     { text: "Notifications", icon: <NotificationsIcon />, path: "/notifications" },
-     { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
-      { text: "Sign Out", icon: <ExitToAppIcon />, onClick:handleSignOut}
+    { text: "Booking", icon: <CalendarMonthIcon />, path: "/booking" },
+    { text: "Sign Out", icon: <ExitToAppIcon />, onClick: handleSignOut },
   ];
 
   const drawer = (
@@ -138,20 +134,22 @@ const handleSignOut = () => {
         AutoCRM
       </Typography>
       <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-     <List>
+      <List>
         {sidebarItems.map((item, idx) => (
           <ListItem
             key={idx}
             button
-            sx={{ color: item.path === '/newsletter' ? '#00bcd4' : '#ccc',  "&:hover": { color: "#00bcd4" }  }}
+            sx={{
+              color: item.path === "/newsletter" ? "#00bcd4" : "#ccc",
+              "&:hover": { color: "#00bcd4" },
+            }}
             onClick={() => {
               if (item.onClick) {
-         
                 item.onClick();
               } else if (item.path) {
                 navigate(item.path);
               }
-              setMobileOpen(false); 
+              setMobileOpen(false);
             }}
           >
             {item.icon}
@@ -159,19 +157,18 @@ const handleSignOut = () => {
           </ListItem>
         ))}
       </List>
-
     </Box>
   );
 
   return (
-        <Box
-            sx={{
-              display: "flex",
-              minHeight: "100vh",
-              background: "linear-gradient(180deg, #000 0%, #111 100%)",
-              color: "white",
-              overflowX: "hidden",
-            }}
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #000 0%, #111 100%)",
+        color: "white",
+        overflowX: "hidden",
+      }}
     >
       <Box
         sx={{
@@ -211,26 +208,33 @@ const handleSignOut = () => {
         {drawer}
       </Box>
 
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          p: { xs: 2, sm: 4 },
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <Button
+          onClick={() => navigate("/dashboard")}
+          sx={{ color: "#00bcd4", mb: 3 }}
+        >
+          ← Back to Dashboard
+        </Button>
 
-      <Box sx={{  flex: 1, minWidth: 0,p: { xs: 2, sm: 4 }, WebkitOverflowScrolling: "touch" }}>
-               <Button
-                                    onClick={() => navigate("/dashboard")}
-                                    sx={{ color: "#00bcd4", mb: 3 }}
-                                >
-                                    ← Back to Dashboard
-                                </Button>
-            
-                 <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                        <Chip
-                          label={loggedInEmail}
-                          variant="outlined"
-                          sx={{
-                            width: "200px",
-                            color: "#00bcd4",
-                            borderColor: "#00bcd4",
-                          }}
-                        />
-                      </Box>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Chip
+            label={loggedInEmail}
+            variant="outlined"
+            sx={{
+              width: "200px",
+              color: "#00bcd4",
+              borderColor: "#00bcd4",
+            }}
+          />
+        </Box>
+
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Discount Newsletter
         </Typography>
@@ -248,8 +252,7 @@ const handleSignOut = () => {
           special offers.
         </Typography>
 
-        <Grid  container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
-
+        <Grid container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
               <Paper
@@ -259,10 +262,9 @@ const handleSignOut = () => {
                   borderRadius: 3,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  boxSizing:"border-box",
+                  boxSizing: "border-box",
                   width: "100%",
                   maxWidth: 900,
-
                 }}
               >
                 <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -395,7 +397,7 @@ const handleSignOut = () => {
           </Grid>
         </Grid>
 
-              <Grid  container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
+        <Grid container justifyContent="center" sx={{ width: "100%", mx: 0 }}>
           <Grid item xs={12} sm={10} md={8} lg={7}>
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
               <Paper
@@ -403,7 +405,7 @@ const handleSignOut = () => {
                   width: { xs: 420, sm: 700, md: 1000, lg: 1200 },
                   maxWidth: "100%",
                   p: 4,
-                   boxSizing: "border-box",
+                  boxSizing: "border-box",
                   borderRadius: 3,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
