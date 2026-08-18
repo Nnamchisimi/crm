@@ -25,8 +25,7 @@ function AppWrapper() {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userRole");
     localStorage.removeItem("role");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("userEmail");
+    localStorage.removeItem("token");
     alert("Signed out successfully!");
   };
 
