@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import useAuth from "./useAuth";
 
 import MenuIcon from "@mui/icons-material/Menu";
 import HomeIcon from "@mui/icons-material/Home";
@@ -91,6 +92,7 @@ const carModels = {
 
 const AddVehicle = () => {
     const navigate = useNavigate();
+    useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
