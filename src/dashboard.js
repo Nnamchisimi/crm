@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
+import useAuth from "./useAuth";
 
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
@@ -61,28 +61,7 @@ const Dashboard = () => {
     { title: "Active Campaigns", value: activeCampaigns.length },
   ];
 
-  // Auth check
-  useEffect(() => {
-    console.log("[Dashboard] auth check:", { hasToken: !!userToken, email: userEmail });
-
-    if (!userToken) {
-      console.warn("[Dashboard] no token found, redirecting to /signin");
-      navigate("/signin", { replace: true });
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(userToken);
-      console.log("[Dashboard] decoded token role:", decoded.role);
-      if (decoded.role !== "user") {
-        console.warn("[Dashboard] role is not 'user':", decoded.role, "redirecting to /signin");
-        navigate("/signin", { replace: true });
-      }
-    } catch (err) {
-      console.error("[Dashboard] Invalid token:", err);
-      navigate("/signin", { replace: true });
-    }
-  }, [navigate, userToken]);
+  useAuth();
 
   // Fetch vehicles
   useEffect(() => {

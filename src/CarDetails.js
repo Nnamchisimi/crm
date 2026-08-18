@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Typography, Button, Chip, Paper, Divider } from "@mui/material";
+import useAuth from "./useAuth";
 import EditCarDetails from "./editcardetails";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
@@ -13,6 +14,8 @@ const CarDetails = () => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [isEditCarOpen, setIsEditCarOpen] = useState(false);
 
+  useAuth();
+
   const handleVehicleUpdate = (updatedData) => {
     setVehicle(updatedData);
   };
@@ -23,12 +26,6 @@ const CarDetails = () => {
 
     console.log("[CarDetails] localStorage token check:", { hasToken: !!token, tokenPrefix: token ? token.substring(0, 20) + "..." : null });
     console.log("[CarDetails] localStorage keys:", Object.keys(localStorage));
-
-    if (!token) {
-      console.error("[CarDetails] Authentication token is missing. Redirecting to /signin.");
-      navigate("/signin", { replace: true });
-      return;
-    }
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/vehicles/${id}`, {

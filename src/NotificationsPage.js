@@ -16,7 +16,6 @@ import {
   CircularProgress
 } from "@mui/material";
 import DoneIcon from "@mui/icons-material/Done";
-import { jwtDecode } from "jwt-decode";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CampaignIcon from "@mui/icons-material/Campaign";
@@ -26,6 +25,7 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import useAuth from "./useAuth";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
@@ -47,25 +47,13 @@ const NotificationsPage = () => {
     navigate("/signin", { replace: true });
   };
 
-  /* 🔐 Auth Guard & Initial Fetch */
-  useEffect(() => {
-    if (!userToken) {
-      navigate("/signin", { replace: true });
-      return;
-    }
+  useAuth();
 
-    try {
-      const { role } = jwtDecode(userToken);
-      if (role !== "user") {
-        navigate("/signin", { replace: true });
-        return;
-      }
+  useEffect(() => {
+    if (userToken && userEmail) {
       fetchNotifications();
-    } catch (err) {
-      console.error("Auth error:", err);
-      handleSignOut();
     }
-  }, [navigate, userToken]);
+  }, [userToken, userEmail]);
 
   const fetchNotifications = async () => {
     if (!userEmail || !userToken) return;

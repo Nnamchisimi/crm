@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
+import useAuth from "./useAuth";
 import MenuIcon from "@mui/icons-material/Menu";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -36,6 +36,8 @@ const CampaignsPage = () => {
   const userEmail = localStorage.getItem("userEmail");
   const userToken = localStorage.getItem("token");
 
+  useAuth();
+
   const handleSignOut = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
@@ -43,19 +45,6 @@ const CampaignsPage = () => {
     localStorage.clear();
     navigate("/signin", { replace: true });
   };
-
-  useEffect(() => {
-    if (!userToken) {
-      navigate("/signin", { replace: true });
-      return;
-    }
-    try {
-      const { role } = jwtDecode(userToken);
-      if (role !== "user") navigate("/signin", { replace: true });
-    } catch (err) {
-      handleSignOut();
-    }
-  }, [navigate, userToken]);
 
   useEffect(() => {
     const fetchCampaigns = async () => {

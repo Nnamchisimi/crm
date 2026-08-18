@@ -46,6 +46,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import useAuth from "./useAuth";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 
@@ -161,11 +162,12 @@ const BookService = () => {
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState(null);
 
- const userToken = localStorage.getItem("token");
- const userEmail = localStorage.getItem("userEmail");
+  const userToken = localStorage.getItem("token");
+  const userEmail = localStorage.getItem("userEmail");
 
+  useAuth();
 
-    const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState({
         vehicle: null,
         service: null,
         date: defaultAppointmentDate, 

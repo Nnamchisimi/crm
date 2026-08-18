@@ -25,9 +25,8 @@ import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { useNavigate } from "react-router-dom";
+import useAuth from "./useAuth";
 import { motion } from "framer-motion";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { jwtDecode } from "jwt-decode";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3007";
 const Newsletter = () => {
@@ -76,28 +75,9 @@ const handleSignOut = () => {
       },
     });
   };
-useEffect(() => {
+  useAuth();
 
-  if (!userToken) {
-    navigate("/signin", { replace: true });
-    return;
-  }
-
-  try {
-    const { role } = jwtDecode(userToken);
-    if (role !== "user") {
-      navigate("/signin", { replace: true });
-    }
-  } catch (err) {
-    console.error("Invalid token:", err);
-    handleSignOut();
-  }
-}, [navigate, userToken]);
-
-
-
-  
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
   if (!loggedInEmail) {
     alert("You must be logged in to subscribe.");
     return;
